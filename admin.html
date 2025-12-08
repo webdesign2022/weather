@@ -196,7 +196,7 @@
         });
 
         // 3. 渲染表格
-        function renderTable(devices) {
+       function renderTable(devices) {
             tableBody.innerHTML = '';
             if (devices.length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暫無裝置資料</td></tr>';
@@ -215,6 +215,7 @@
                     <td class="text-muted">${d.sender}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-light" onclick="selectDevice('${d.id}')">選取</button>
+                        <button class="btn btn-sm btn-outline-danger" style="margin-left:5px;" onclick="deleteDevice('${d.id}')">刪除</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -263,6 +264,25 @@
             });
             db.ref().update(updates).then(() => alert("廣播已發送"));
         }
+		// 🗑️ 刪除裝置功能
+        function deleteDevice(id) {
+            // 1. 安全確認 (防止手殘按錯)
+            const confirmDelete = confirm(`⚠️ 警告！\n\n確定要永久刪除裝置 [${id}] 嗎？\n這將會清除該裝置的所有配對資料。`);
+            
+            if (confirmDelete) {
+                // 2. 執行刪除
+                db.ref('devices/' + id).remove()
+                .then(() => {
+                    alert(`裝置 ${id} 已刪除。`);
+                    // 這裡不用手動重新整理表格，因為我們有 .on('value') 監聽，
+                    // Firebase 一刪除，網頁列表會自動消失，超神奇！
+                })
+                .catch((error) => {
+                    alert("刪除失敗：" + error.message);
+                });
+            }
+        }
+		
     </script>
 </body>
 </html>
