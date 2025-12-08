@@ -117,33 +117,38 @@
         </div>
     </div>
 
-    <script>
+   <script>
         // ==========================================
-        // ⚠️ ADMIN CONFIG (請填入同一組 Config) ⚠️
+        // ⚠️ 請填入跟 index.html 一模一樣的 Config ⚠️
         // ==========================================
         const firebaseConfig = {
-           apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
-		   authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-		   databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-		   projectId: "weather-mvp-5e7a4",
-		   storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-		   messagingSenderId: "305516610730",
-		   appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
+            apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
+			authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+			databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+			projectId: "weather-mvp-5e7a4",
+			storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+			messagingSenderId: "305516610730",
+			appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
         // ==========================================
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. 初始化監聽
+        // 1. 監聽連線狀態
         const tableBody = document.getElementById('device-table-body');
-        let allDevices = []; // 存所有資料以便篩選
+        let allDevices = [];
 
         db.ref('.info/connected').on('value', snap => {
-            document.getElementById('connection-status').innerText = snap.val() ? "🟢 系統連線正常" : "🔴 斷線中";
+            const statusDiv = document.getElementById('connection-status');
+            if (snap.val() === true) {
+                statusDiv.innerHTML = '<span style="color:#00FF00">🟢 系統連線正常</span>';
+            } else {
+                statusDiv.innerHTML = '<span style="color:red">🔴 斷線中 (請檢查 Config)</span>';
+            }
         });
 
-        // 2. 讀取所有裝置資料 (即時更新)
+        // 2. 讀取資料 (修正欄位名稱)
         db.ref('devices').on('value', snapshot => {
             tableBody.innerHTML = '';
             allDevices = [];
@@ -153,42 +158,53 @@
             const today = new Date();
             const todayStr = String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
-            snapshot.forEach(child => {
-                const id = child.key;
-                const data = child.val();
-                const settings = data.settings || {}; // 讀取 V7.0 的設定檔
-                
-                // 判斷是否為壽星
-                let isBday = false;
-                if (settings.birthday && settings.birthday.endsWith(todayStr)) {
-                    isBday = true;
-                    bdayCount++;
-                }
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const id = child.key;
+                    const data = child.val();
+                    const settings = data.settings || {}; 
+                    
+                    // 🌟 修正點：同時相容 V7 的 recipientName 和 V9 的 recipient
+                    const recName = settings.recipient || settings.recipientName || '(未設定)';
+                    const sender = settings.pairedBy || '(未知)';
+                    const bday = settings.birthday || '-';
 
-                const deviceObj = {
-                    id: id,
-                    name: settings.recipientName || '(未設定)',
-                    birthday: settings.birthday || '-',
-                    sender: settings.pairedBy || '-',
-                    isBday: isBday
-                };
-                allDevices.push(deviceObj);
-                count++;
-            });
+                    // 判斷壽星
+                    let isBday = false;
+                    if (bday !== '-' && bday.endsWith(todayStr)) {
+                        isBday = true;
+                        bdayCount++;
+                    }
 
-            // 更新儀表板數字
+                    const deviceObj = {
+                        id: id,
+                        name: recName,
+                        birthday: bday,
+                        sender: sender,
+                        isBday: isBday
+                    };
+                    allDevices.push(deviceObj);
+                    count++;
+                });
+            }
+
+            // 更新儀表板
             document.getElementById('total-devices').innerText = count;
             document.getElementById('birthday-count').innerText = bdayCount;
 
             renderTable(allDevices);
         });
 
-        // 3. 渲染表格函數
+        // 3. 渲染表格
         function renderTable(devices) {
             tableBody.innerHTML = '';
+            if (devices.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暫無裝置資料</td></tr>';
+                return;
+            }
+
             devices.forEach(d => {
                 const row = document.createElement('tr');
-                // 如果是壽星，整行高亮
                 if(d.isBday) row.style.background = "#4a1c4a";
 
                 row.innerHTML = `
@@ -205,7 +221,7 @@
             });
         }
 
-        // 4. 篩選功能 (搜尋 ID 或 生日)
+        // 4. 篩選
         function filterTable() {
             const query = document.getElementById('search-input').value.toLowerCase();
             const filtered = allDevices.filter(d => 
@@ -216,55 +232,36 @@
             renderTable(filtered);
         }
 
-        // 5. 操作邏輯
-        function selectDevice(id) {
-            document.getElementById('target-id').value = id;
-        }
+        // 5. 操作
+        function selectDevice(id) { document.getElementById('target-id').value = id; }
+        function fillMsg(text) { document.getElementById('single-msg').value = text; }
 
-        function fillMsg(text) {
-            document.getElementById('single-msg').value = text;
-        }
-
-        // 發送單一訊息
         function sendToTarget() {
             const id = document.getElementById('target-id').value;
             const msg = document.getElementById('single-msg').value;
             if(!id || !msg) return alert("請輸入 ID 和訊息");
 
-            // 這裡不只是改 message，我們直接推播給該裝置
             db.ref('devices/' + id + '/message').set({
                 text: msg,
                 timestamp: Date.now(),
-                from: 'SYSTEM_ADMIN' // 標記來源
-            }).then(() => {
-                alert(`已發送給 ${id}`);
-            });
+                from: 'ADMIN'
+            }).then(() => alert(`已發送給 ${id}`));
         }
 
-        // 發送全域廣播 (Broadcast)
         function sendBroadcast() {
             const msg = document.getElementById('broadcast-msg').value;
-            if(!msg) return alert("請輸入廣播內容");
-            
-            if(!confirm(`⚠️ 危險操作確認 ⚠️\n\n確定要發送 "${msg}" 給所有用戶嗎？\n這將影響目前 ${allDevices.length} 台裝置。`)) {
-                return;
-            }
+            if(!msg) return alert("請輸入內容");
+            if(!confirm("確定全體廣播？")) return;
 
-            // 這裡採用最簡單的迴圈寫法 (適合 MVP)
-            // 如果用戶破萬，建議改用 Firebase Functions 後端處理
             const updates = {};
             allDevices.forEach(d => {
-                // 批次寫入路徑
                 updates['devices/' + d.id + '/message'] = {
                     text: msg,
                     timestamp: Date.now(),
                     from: 'BROADCAST'
                 };
             });
-
-            db.ref().update(updates).then(() => {
-                alert("廣播已發送！所有裝置將同步顯示。");
-            });
+            db.ref().update(updates).then(() => alert("廣播已發送"));
         }
     </script>
 </body>
