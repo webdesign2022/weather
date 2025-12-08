@@ -4,22 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>NANO V9.3 FIXED</title>
+    <title>NANO V9.4 FIXED</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;500&display=swap" rel="stylesheet">
 
     <style>
-        /* 除錯紅框 */
         #error-console { position: fixed; top: 0; left: 0; width: 100%; z-index: 999999; background: rgba(100, 0, 0, 0.9); color: #ffcccc; padding: 10px; font-family: monospace; font-size: 12px; display: none; border-bottom: 2px solid red; white-space: pre-wrap; }
         
         * { box-sizing: border-box; }
         body { margin: 0; background-color: #000; color: #fff; font-family: 'Roboto', sans-serif; height: 100vh; overflow: hidden; }
 
-        /* UI */
+        /* UI 元件修正 */
         .btn { background: linear-gradient(135deg, #00FFFF, #0088FF); color: black; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn:active { transform: scale(0.98); }
+        
+        /* 🌟 修正：取消按鈕樣式，讓它看起來像按鈕，不像輸入框 */
+        .btn-cancel { background: #333; color: #aaa; border: none; padding: 15px; font-size: 16px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; }
+        
         .input-field { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 10px; width: 100%; font-size: 16px; margin-bottom: 15px; text-align: center; }
         .page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; padding: 30px; background: #000; z-index: 10; overflow-y: auto; }
         .center-layout { justify-content: center; align-items: center; }
@@ -62,7 +65,7 @@
 
     <div id="landing-page" class="page center-layout" style="display:flex;">
         <h1 style="font-family:'Orbitron'; color:#00FFFF; font-size:50px; margin-bottom:10px;">🍌 NANO</h1>
-        <p style="color:#666; margin-bottom:50px;">VERSION 9.3 (FIXED)</p>
+        <p style="color:#666; margin-bottom:50px;">VERSION 9.4 (FINAL)</p>
         <button class="btn" onclick="selectRole('display')">📺 我是顯示器</button>
         <button class="btn" style="background:transparent; border:1px solid #00FFFF; color:#00FFFF" onclick="selectRole('remote')">📱 我是遙控器</button>
     </div>
@@ -77,7 +80,7 @@
         <h2>新增裝置</h2>
         <input type="text" id="pair-code" class="input-field" placeholder="輸入黃色代碼" maxlength="4">
         <button class="btn" onclick="submitPairing()">🔗 連線配對</button>
-        <button class="btn" style="background:transparent; border:1px solid #555; margin-top:10px;" onclick="cancelPairing()">取消</button>
+        <button class="btn-cancel" onclick="cancelPairing()">取消</button>
     </div>
 
     <div id="setup-page" class="page center-layout">
@@ -142,7 +145,6 @@
     </div>
 
     <script>
-        // 🚨 錯誤捕捉
         window.onerror = function(msg, url, line) {
             const el = document.getElementById('error-console');
             el.style.display = 'block';
@@ -154,26 +156,23 @@
         // ⚠️ 1. FIREBASE CONFIG ⚠️
         // ==========================================
         const firebaseConfig = {
-             apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
-			 authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-			 databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-			 projectId: "weather-mvp-5e7a4",
-			 storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-			 messagingSenderId: "305516610730",
-			 appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
+              authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+			  databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+			  projectId: "weather-mvp-5e7a4",
+			  torageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+			  messagingSenderId: "305516610730",
+			  appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
         // ==========================================
         // ⚠️ 2. Weather API (選填) ⚠️
         const WEATHER_API_KEY = "2a9f23e62ebd74a5f2a78e10c105dca7"; 
         // ==========================================
 
-        // 🌟🌟🌟 關鍵修正：變數宣告移到最上面！ 🌟🌟🌟
         let db;
         let currentTheme = 'weather';
         let weatherData = { temp: 24, city: 'Taipei', desc: 'Clouds' };
         let isShowingMsg = false;
 
-        // 初始化 Firebase
         try {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.database();
@@ -181,7 +180,6 @@
             alert("Firebase Init Failed: " + e.message);
         }
 
-        // 頁面路由
         const role = localStorage.getItem('nano_role');
         if (role === 'display') { switchPage('display-page'); initDisplay(); }
         else if (role === 'remote') {
@@ -199,7 +197,6 @@
             document.getElementById(id).style.display = displayType;
         }
 
-        // 按鈕邏輯
         window.selectRole = function(r) { 
             if(!db) { alert("系統未連線"); return; }
             localStorage.setItem('nano_role', r); 
@@ -224,13 +221,24 @@
             localStorage.setItem('temp_pair_id', code); 
             switchPage('setup-page'); 
         };
+        
+        // 🌟🌟🌟 修正：補上生日資料寫入 🌟🌟🌟
         window.submitSetup = function() {
             const id = localStorage.getItem('temp_pair_id');
             const name = document.getElementById('setup-name').value;
-            db.ref('devices/'+id+'/settings').set({ recipient: name, pairedBy: localStorage.getItem('nano_user') }).then(()=>{
+            const bday = document.getElementById('setup-bday').value; // 抓取生日
+
+            if(!name || !bday) { alert("請填寫完整資料"); return; } // 防呆
+
+            db.ref('devices/'+id+'/settings').set({ 
+                recipient: name, 
+                birthday: bday, // 寫入生日
+                pairedBy: localStorage.getItem('nano_user') 
+            }).then(()=>{
                 addLocalDevice(id, name); switchPage('control-page'); initRemote();
             });
         };
+        
         window.sendTheme = function(themeName) {
             const target = localStorage.getItem('nano_current_id');
             if(!target) return alert("未選擇裝置");
