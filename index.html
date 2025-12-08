@@ -3,232 +3,281 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NANO BANANA V1.0</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>NANO BANANA</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body { margin: 0; background-color: #000; color: #00FFFF; font-family: 'Arial', sans-serif; height: 100vh; overflow: hidden; }
+        body { margin: 0; background-color: #000; color: #fff; font-family: 'Arial', sans-serif; height: 100vh; overflow: hidden; }
 
-        /* === 顯示端 (Receiver) === */
-        #display-mode { display: none; width: 100%; height: 100%; }
-        .holo-container { position: relative; width: 320px; height: 320px; margin: auto; top: 50%; transform: translateY(-50%); }
-        .face { position: absolute; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        
-        /* 設備 ID 標籤 */
-        #device-id-tag {
-            position: fixed; top: 10px; left: 10px; z-index: 999;
-            color: #555; font-size: 12px; background: rgba(255,255,255,0.1);
-            padding: 5px; border-radius: 4px; font-family: monospace; pointer-events: none;
+        /* === 1. 啟動畫面 === */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.5s ease-out;
+            pointer-events: none;
         }
 
-        /* 背景影片 (天氣) */
-        .bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; z-index: 1; }
+        .logo { font-size: 40px; font-weight: bold; color: #00FFFF; text-shadow: 0 0 20px #00FFFF; animation: pulse 2s infinite; }
+        .loading-text { margin-top: 20px; font-size: 12px; color: #666; letter-spacing: 2px; }
+        @keyframes pulse { 0% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.5; transform: scale(0.95); } }
+
+        /* === 2. 點擊感應層 (只在顯示端出現) === */
+        #start-layer { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 99999; display: none; cursor: pointer;
+        }
+
+        /* === 3. 主程式 === */
+        #app-content { opacity: 0; transition: opacity 0.5s; width: 100%; height: 100%; }
+        #display-mode { display: none; width: 100%; height: 100%; }
         
-        /* UI 層 */
-        .ui-overlay { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; padding: 5px; box-sizing: border-box; }
+        .holo-container { 
+            position: absolute; width: 320px; height: 320px; 
+            top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) scale(0.8); 
+        }
+
+        .face { position: absolute; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        #device-id-tag { position: fixed; top: 15px; left: 15px; z-index: 999; color: rgba(255,255,255,0.3); font-size: 10px; font-family: monospace; pointer-events: none; }
+        .bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; z-index: 1; }
+        .ui-overlay { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; }
         .time { font-size: 22px; font-weight: 800; color: #fff; text-shadow: 2px 2px 0px #000; line-height: 1; }
         .date { font-size: 10px; color: #FFFF00; font-weight: bold; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 10px; margin-top: 5px; }
-
-        /* 純文字訊息樣式 (無香蕉版) */
+        
         .msg-text { 
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; line-height: 1.4; font-weight: 800; color: #FF00FF; text-shadow: 0 0 10px #FF00FF;
+            font-size: 22px; line-height: 1.4; font-weight: 800; color: #FF00FF; text-shadow: 0 0 10px #FF00FF;
             overflow: hidden; word-break: break-all; padding: 0 5px; box-sizing: border-box;
             animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
-        /* 四面定位 */
         .top { top: 0; left: 110px; transform: rotate(180deg); }
         .bottom { bottom: 0; left: 110px; }
         .left { top: 110px; left: 0; transform: rotate(90deg); }
         .right { top: 110px; right: 0; transform: rotate(-90deg); }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        /* === 控制端 (Controller) === */
-        #control-mode { display: none; padding: 20px; text-align: center; background: #111; height: 100vh; }
-        input { width: 80%; padding: 15px; font-size: 16px; margin-bottom: 15px; border-radius: 10px; border: none; background: #222; color: white; text-align: center; }
-        button { width: 90%; padding: 15px; font-size: 18px; background: #00FFFF; color: #000; border: none; border-radius: 10px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
-        .preset-btn { background: #333; color: #FFF; width: 45%; }
-        label { color: gray; font-size: 12px; display: block; margin-bottom: 5px; }
-
-        /* 啟動遮罩 */
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: flex; justify-content: center; align-items: center; color: white; flex-direction: column; cursor: pointer; }
-    </script>
+        /* 控制端樣式 */
+        #control-mode { display: none; padding: 30px; text-align: center; background: #111; height: 100vh; position: absolute; top:0; left:0; width: 100%; box-sizing: border-box; z-index: 2000; }
+        h2 { color: #00FFFF; letter-spacing: 2px; margin-bottom: 30px; }
+        input { width: 100%; padding: 15px; font-size: 16px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #333; background: #222; color: white; text-align: center; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; font-size: 18px; background: linear-gradient(45deg, #00FFFF, #00CCFF); color: #000; border: none; border-radius: 8px; font-weight: bold; margin-bottom: 10px; cursor: pointer; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        .preset-btn { background: #333; color: #FFF; width: 48%; font-size: 14px; }
+        label { color: #666; font-size: 12px; display: block; margin-bottom: 5px; text-align: left; }
+    </style>
 </head>
 <body>
 
-    <div id="start-overlay" onclick="startApp()">
-        <h1>🍌 NANO BANANA</h1>
-        <p id="start-text">點擊螢幕啟動系統</p>
+    <div id="splash-screen">
+        <div class="logo">🍌 NANO</div>
+        <div class="loading-text" id="status-text">SYSTEM INITIALIZING...</div>
     </div>
 
-    <div id="display-mode">
-        <div id="device-id-tag">ID:Loading...</div>
-        <div class="holo-container">
-            <div style="position:absolute; top:50%; left:50%; width:8px; height:8px; background:red; border-radius:50%; transform:translate(-50%,-50%); opacity:0.3;"></div>
-            <div class="face top" id="f-top"></div>
-            <div class="face bottom" id="f-bottom"></div>
-            <div class="face left" id="f-left"></div>
-            <div class="face right" id="f-right"></div>
-        </div>
-    </div>
+    <div id="start-layer" onclick="userInteract()"></div>
 
-    <div id="control-mode">
-        <h2 style="color:white;">NANO REMOTE</h2>
-        
-        <div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px;">
-            <label>傳送給 (Device ID):</label>
-            <input type="text" id="target-id" placeholder="輸入舊手機上的 ID" style="background:#000; margin-bottom:0;">
+    <div id="app-content">
+        <div id="display-mode">
+            <div id="device-id-tag">ID: ...</div>
+            <div class="holo-container">
+                <div style="position:absolute; top:50%; left:50%; width:8px; height:8px; background:red; border-radius:50%; transform:translate(-50%,-50%); opacity:0.3;"></div>
+                <div class="face top" id="f-top"></div>
+                <div class="face bottom" id="f-bottom"></div>
+                <div class="face left" id="f-left"></div>
+                <div class="face right" id="f-right"></div>
+            </div>
         </div>
 
-        <input type="text" id="msg-input" placeholder="輸入訊息內容...">
-        <button onclick="sendMsg()">🚀 發送全息訊息</button>
-        
-        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; padding:0 5%;">
-            <button class="preset-btn" onclick="sendPreset('❤️ 想你了')">❤️ 想你了</button>
-            <button class="preset-btn" onclick="sendPreset('今晚吃火鍋？')">今晚吃火鍋？</button>
-            <button class="preset-btn" onclick="sendPreset('記得帶傘 ☔')">記得帶傘 ☔</button>
-            <button class="preset-btn" onclick="sendPreset('加油 💪')">加油 💪</button>
+        <div id="control-mode">
+            <h2>NANO REMOTE</h2>
+            <div style="margin-bottom:30px;">
+                <label>LINK DEVICE (ID)</label>
+                <input type="text" id="target-id" placeholder="輸入裝置 ID">
+            </div>
+            
+            <label>MESSAGE</label>
+            <input type="text" id="msg-input" placeholder="輸入全息訊息...">
+            <button onclick="sendMsg()">🚀 發送訊號</button>
+            
+            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; margin-top:20px;">
+                <button class="preset-btn" onclick="sendPreset('❤️ 想你了')">❤️ 想你了</button>
+                <button class="preset-btn" onclick="sendPreset('今晚吃火鍋？')">今晚吃火鍋？</button>
+                <button class="preset-btn" onclick="sendPreset('帶傘 ☔')">帶傘 ☔</button>
+                <button class="preset-btn" onclick="sendPreset('加油 💪')">加油 💪</button>
+            </div>
+            <div id="status" style="color:#00FF00; margin-top:20px; font-size:12px;"></div>
         </div>
-        <div id="status" style="color:#00FF00; margin-top:20px;"></div>
     </div>
 
     <script>
         // ==========================================
-        // ⚠️ 在這裡貼上你剛剛測試成功的 Config ⚠️
+        // ⚠️ CONFIG 區域 ⚠️
         // ==========================================
         const firebaseConfig = {
-           apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
-           authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-           databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-           projectId: "weather-mvp-5e7a4",
-           storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-           messagingSenderId: "305516610730",
+             apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
+  authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+  databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+  projectId: "weather-mvp-5e7a4",
+  storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+  messagingSenderId: "305516610730",
   appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
         // ==========================================
 
-        // 初始化檢查
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        // 判斷模式
+        const splash = document.getElementById('splash-screen');
+        const statusText = document.getElementById('status-text');
+        
+        // 1. 先判斷是哪個模式
         const urlParams = new URLSearchParams(window.location.search);
         const isController = urlParams.get('mode') === 'control';
-        
-        // 取得本機 ID (如果沒有就生成)
-        let myDeviceID = localStorage.getItem('nano_device_id');
-        if (!myDeviceID) {
-            myDeviceID = Math.random().toString(36).substring(2, 6).toUpperCase();
-            localStorage.setItem('nano_device_id', myDeviceID);
-        }
 
-        // 啟動主程式
-        function startApp() {
-            document.getElementById('start-overlay').style.display = 'none';
-            // 嘗試播放影片
-            document.querySelectorAll('video').forEach(v => v.play().catch(e=>{console.log("Autoplay blocked")}));
-        }
-
-        if (isController) {
-            // ================= 控制器邏輯 =================
-            document.getElementById('start-overlay').style.display = 'none';
-            document.getElementById('control-mode').style.display = 'block';
-
-            // 自動填入上次的目標 ID
-            const savedTarget = localStorage.getItem('nano_target_id');
-            if (savedTarget) document.getElementById('target-id').value = savedTarget;
-
-            function sendMsg() {
-                const text = document.getElementById('msg-input').value;
-                if(!text) return;
-                pushToCloud(text);
-            }
-            function sendPreset(text) { pushToCloud(text); }
-
-            function pushToCloud(text) {
-                const targetID = document.getElementById('target-id').value.trim().toUpperCase();
-                if (!targetID) { alert("請輸入對方的 ID"); return; }
-                
-                localStorage.setItem('nano_target_id', targetID); // 記住它
-
-                const path = 'devices/' + targetID;
-                db.ref(path).set({ message: text, timestamp: Date.now() })
-                .then(() => {
-                    const s = document.getElementById('status');
-                    s.innerText = `已發送給 [${targetID}]`;
-                    setTimeout(() => s.innerText = "", 2000);
-                });
-            }
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
             
-            // 綁定按鈕
-            window.sendMsg = sendMsg;
-            window.sendPreset = sendPreset;
+            // 2. 監聽連線
+            db.ref('.info/connected').on('value', snap => {
+                if (snap.val() === true) {
+                    
+                    if (isController) {
+                        // === 控制端：自動進入 (Auto Start) ===
+                        statusText.innerText = "CONNECTED.";
+                        statusText.style.color = "#00FF00";
+                        // 延遲 0.5 秒讓用戶看到連線成功，然後自動跳轉
+                        setTimeout(() => {
+                            closeSplash();
+                            initApp();
+                        }, 500);
 
-        } else {
-            // ================= 顯示器邏輯 =================
-            document.getElementById('display-mode').style.display = 'block';
-            document.getElementById('device-id-tag').innerText = "ID: " + myDeviceID;
-            document.getElementById('start-text').innerText = `點擊螢幕啟動 (ID: ${myDeviceID})`;
+                    } else {
+                        // === 顯示端：等待點擊 (Wait for Tap) ===
+                        statusText.innerText = "READY. TAP TO START.";
+                        statusText.style.color = "#00FF00";
+                        document.getElementById('start-layer').style.display = 'block';
+                    }
 
-            let isShowingMessage = false;
-
-            // 天氣渲染 (背景影片 + 時間)
-            function renderWeather() {
-                if (isShowingMessage) return;
-
-                const now = new Date();
-                const time = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit' });
-                const date = now.toLocaleDateString('en-US', { month:'numeric', day:'numeric', weekday:'short' });
-
-                // 注意：這裡引用了 weather.mp4，請確保檔案存在
-                const html = `
-                    <video src="weather.mp4" class="bg-video" muted loop playsinline></video>
-                    <div class="ui-overlay">
-                        <div class="time">${time}</div>
-                        <div class="date">${date}</div>
-                    </div>
-                `;
-                updateFaces(html);
-                document.querySelectorAll('video').forEach(v => v.play().catch(e=>{}));
-            }
-            setInterval(renderWeather, 1000);
-
-            // 監聽專屬 ID
-            db.ref('devices/' + myDeviceID).on('value', snapshot => {
-                const data = snapshot.val();
-                if (!data) return;
-                // 10秒內新訊息才顯示
-                if (Date.now() - data.timestamp < 10000) {
-                    showMessage(data.message);
+                } else {
+                    statusText.innerText = "CONNECTING...";
                 }
             });
 
-            function showMessage(text) {
-                isShowingMessage = true;
-                // 純文字模式 (無香蕉)
-                const html = `
-                    <div class="ui-overlay" style="background:black;">
-                        <div class="msg-text">${text}</div>
-                    </div>
-                `;
-                updateFaces(html);
+        } catch (e) {
+            statusText.innerText = "ERROR: CONFIG FAILED";
+            statusText.style.color = "red";
+        }
 
-                setTimeout(() => {
-                    isShowingMessage = false;
-                    renderWeather();
-                }, 8000);
+        // 關閉啟動畫面的通用函數
+        function closeSplash() {
+            splash.style.opacity = 0;
+            document.getElementById('start-layer').style.display = 'none';
+            setTimeout(() => splash.style.display = 'none', 500);
+            document.getElementById('app-content').style.opacity = 1;
+        }
+
+        // 用戶手動點擊 (顯示端用)
+        function userInteract() {
+            closeSplash();
+            // 嘗試播放影片
+            const videos = document.querySelectorAll('video');
+            if(videos.length > 0) videos.forEach(v => v.play().catch(e=>{}));
+            initApp();
+        }
+
+        function initApp() {
+            const db = firebase.database();
+            
+            let myDeviceID = localStorage.getItem('nano_device_id');
+            if (!myDeviceID) {
+                myDeviceID = Math.random().toString(36).substring(2, 6).toUpperCase();
+                localStorage.setItem('nano_device_id', myDeviceID);
             }
 
-            function updateFaces(html) {
-                ['f-top', 'f-bottom', 'f-left', 'f-right'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if(el) el.innerHTML = html;
+            if (isController) {
+                // === 控制端邏輯 ===
+                document.getElementById('control-mode').style.display = 'block';
+                const savedTarget = localStorage.getItem('nano_target_id');
+                if (savedTarget) document.getElementById('target-id').value = savedTarget;
+
+                window.sendMsg = function() {
+                    const text = document.getElementById('msg-input').value;
+                    if(!text) return;
+                    pushToCloud(text);
+                };
+                window.sendPreset = function(text) { pushToCloud(text); };
+
+                function pushToCloud(text) {
+                    const targetID = document.getElementById('target-id').value.trim().toUpperCase();
+                    if (!targetID) { alert("請輸入 ID"); return; }
+                    localStorage.setItem('nano_target_id', targetID);
+
+                    db.ref('devices/' + targetID).set({ message: text, timestamp: Date.now() })
+                    .then(() => {
+                        const s = document.getElementById('status');
+                        s.innerText = `SENT TO [${targetID}]`;
+                        setTimeout(() => s.innerText = "", 2000);
+                    });
+                }
+
+            } else {
+                // === 顯示端邏輯 ===
+                document.getElementById('display-mode').style.display = 'block';
+                document.getElementById('device-id-tag').innerText = "ID: " + myDeviceID;
+
+                let isShowingMessage = false;
+
+                function renderWeather() {
+                    if (isShowingMessage) return;
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit' });
+                    const date = now.toLocaleDateString('en-US', { month:'numeric', day:'numeric', weekday:'short' });
+
+                    const html = `
+                        <video src="weather.mp4" class="bg-video" muted loop playsinline></video>
+                        <div class="ui-overlay">
+                            <div class="time">${time}</div>
+                            <div class="date">${date}</div>
+                        </div>
+                    `;
+                    updateFaces(html);
+                    document.querySelectorAll('video').forEach(v => v.play().catch(e=>{}));
+                }
+                setInterval(renderWeather, 1000);
+
+                db.ref('devices/' + myDeviceID).on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (!data) return;
+                    if (Date.now() - data.timestamp < 10000) {
+                        showMessage(data.message);
+                    }
                 });
+
+                function showMessage(text) {
+                    isShowingMessage = true;
+                    const html = `
+                        <div class="ui-overlay" style="background:black;">
+                            <div class="msg-text">${text}</div>
+                        </div>
+                    `;
+                    updateFaces(html);
+                    setTimeout(() => {
+                        isShowingMessage = false;
+                        renderWeather();
+                    }, 8000);
+                }
+
+                function updateFaces(html) {
+                    ['f-top', 'f-bottom', 'f-left', 'f-right'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if(el) el.innerHTML = html;
+                    });
+                }
             }
-            window.startApp = startApp;
         }
     </script>
 </body>
