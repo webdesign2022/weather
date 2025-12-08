@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
-    <title>NANO BANANA V6.0</title>
+    <title>NANO BANANA V8.0</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -16,304 +15,262 @@
         * { box-sizing: border-box; }
         body { margin: 0; background-color: #000; color: #fff; font-family: 'Roboto', sans-serif; height: 100vh; overflow: hidden; }
 
-        /* === 共用 UI 元件 === */
-        .btn {
-            background: linear-gradient(135deg, #00FFFF, #0088FF); color: black;
-            border: none; padding: 15px 30px; font-size: 18px; font-weight: bold;
-            border-radius: 30px; cursor: pointer; margin: 10px; width: 80%; max-width: 300px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3); transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.95); }
-        .input-field {
-            background: #222; border: 1px solid #444; color: white;
-            padding: 15px; border-radius: 10px; width: 80%; max-width: 300px;
-            font-size: 16px; margin-bottom: 15px; text-align: center;
-        }
-        h2 { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; color: #00FFFF; }
+        /* === UI 元件 === */
+        .btn { background: linear-gradient(135deg, #00FFFF, #0088FF); color: black; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; margin-top: 10px; width: 100%; }
+        .btn:active { transform: scale(0.98); }
+        .btn-outline { background: transparent; border: 1px solid #00FFFF; color: #00FFFF; }
+        .input-field { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 10px; width: 100%; font-size: 16px; margin-bottom: 15px; text-align: center; }
+        h2 { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; color: #00FFFF; text-align: center; margin-bottom: 30px; }
 
-        /* === 1. 入口頁 (Landing Page) === */
-        #landing-page {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: #000; z-index: 5000;
-        }
-        .hero-logo { font-size: 50px; font-family: 'Orbitron', sans-serif; color: #00FFFF; margin-bottom: 50px; text-shadow: 0 0 20px #00FFFF; }
+        /* === 頁面容器 (預設隱藏) === */
+        .page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; padding: 30px; background: #000; z-index: 10; overflow-y: auto; }
+        
+        /* 置中佈局用 */
+        .center-layout { justify-content: center; align-items: center; }
 
-        /* === 2. 註冊頁 (Registration) === */
-        #register-page {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-            background: #111; z-index: 4000;
-        }
-
-        /* === 3. 配對頁 (Pairing Input) === */
-        #pairing-page {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-            background: #111; z-index: 4000;
-        }
-
-        /* === 4. 顯示端 - 巨型配對碼 (Unpaired State) === */
-        #huge-code-overlay {
-            position: absolute; width: 100%; height: 100%;
-            display: none; /* 預設隱藏，邏輯控制顯示 */
-            flex-direction: column; align-items: center; justify-content: center;
-            background: black; z-index: 20;
-        }
-        .pairing-code {
-            font-family: 'Orbitron', sans-serif; font-size: 60px; /* 超大字體 */
-            color: #FFFF00; font-weight: bold; text-shadow: 0 0 20px #FFFF00;
-            animation: rotate 10s linear infinite; /* 緩慢旋轉吸引注意 */
-        }
-        .scan-hint { margin-top: 10px; color: #666; font-size: 12px; }
-
-        /* === 5. 顯示端 - 主程式 (Display Mode) === */
-        #display-mode { display: none; width: 100%; height: 100%; }
-        .holo-container { 
-            position: absolute; width: 320px; height: 320px; 
-            top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); 
-        }
+        /* === 顯示端 (Display) === */
+        .holo-container { position: absolute; width: 320px; height: 320px; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); }
         .face { position: absolute; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; z-index: 1; }
         .ui-overlay { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; }
         .time { font-size: 22px; font-weight: 800; color: #fff; text-shadow: 2px 2px 0px #000; line-height: 1; }
+        
+        /* 訊息文字 */
         .msg-text { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #FF00FF; text-shadow: 0 0 10px #FF00FF; overflow: hidden; word-break: break-all; animation: popIn 0.5s; }
         
+        /* 四面旋轉 */
         .top { top: 0; left: 110px; transform: rotate(180deg); }
         .bottom { bottom: 0; left: 110px; }
         .left { top: 110px; left: 0; transform: rotate(90deg); }
         .right { top: 110px; right: 0; transform: rotate(-90deg); }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        /* === 6. 控制端 - 主控台 (Control Mode) === */
-        #control-mode { display: none; padding: 30px; text-align: center; background: #111; height: 100vh; }
-        .preset-btn { background: #333; color: #FFF; width: 48%; margin-bottom: 10px; }
-        
-        /* 隱藏的啟動層 (顯示端用) */
+        /* 巨型配對碼遮罩 */
+        #huge-code-overlay { position: absolute; width: 100%; height: 100%; display: none; background: black; z-index: 20; }
+        .pairing-code { font-family: 'Orbitron', monospace; font-size: 50px; color: #FFFF00; font-weight: bold; animation: rotate 10s linear infinite; }
+
+        /* === 控制端 (Remote) === */
+        .device-card { background: #222; border-radius: 10px; padding: 15px; margin-bottom: 20px; border: 1px solid #333; }
+        select { width: 100%; padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; font-size: 16px; margin-bottom: 10px; }
+        .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .preset-btn { background: #333; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; }
+
+        /* 啟動層 */
         #start-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; display: none; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="landing-page">
-        <div class="hero-logo">🍌 NANO</div>
-        <p style="color:#666; margin-bottom:40px;">HOLO-DOCK SYSTEM V6.0</p>
-        
-        <button class="btn" onclick="selectRole('display')">📺 我是顯示器<br><span style="font-size:12px; font-weight:normal;">(放入底座的舊手機)</span></button>
-        <button class="btn" style="background:linear-gradient(135deg, #FF00FF, #FF8800);" onclick="selectRole('remote')">📱 我是遙控器<br><span style="font-size:12px; font-weight:normal;">(現在用的手機)</span></button>
+    <div id="landing-page" class="page center-layout" style="display:flex;">
+        <h1 style="font-family:'Orbitron'; color:#00FFFF; font-size:50px; margin-bottom:10px;">🍌 NANO</h1>
+        <p style="color:#666; margin-bottom:50px;">HOLO SYSTEM V8.0</p>
+        <button class="btn" onclick="selectRole('display')">📺 我是顯示器<br><small>(舊手機)</small></button>
+        <button class="btn btn-outline" onclick="selectRole('remote')">📱 我是遙控器<br><small>(控制端)</small></button>
     </div>
 
-    <div id="register-page">
+    <div id="register-page" class="page center-layout">
         <h2>建立檔案</h2>
-        <p style="color:#888; margin-bottom:30px;">讓我們認識你，以便提供生日驚喜</p>
         <input type="text" id="reg-name" class="input-field" placeholder="你的暱稱">
-        <input type="date" id="reg-bday" class="input-field">
-        <button class="btn" onclick="submitRegistration()">下一步 ➜</button>
+        <button class="btn" onclick="submitReg()">下一步</button>
     </div>
 
-    <div id="pairing-page">
-        <h2>裝置配對</h2>
-        <p style="color:#888; margin-bottom:30px;">請輸入顯示器上的黃色 4 位數代碼</p>
-        <input type="text" id="pair-code" class="input-field" placeholder="例如: 8888" maxlength="4" style="font-size:24px; letter-spacing:5px; font-family:monospace;">
+    <div id="pairing-page" class="page center-layout">
+        <h2>新增裝置</h2>
+        <p style="color:#888;">請輸入顯示器上的黃色代碼</p>
+        <input type="text" id="pair-code" class="input-field" placeholder="例如: A1B2" maxlength="4" style="letter-spacing:5px; font-family:monospace; font-size:24px;">
         <button class="btn" onclick="submitPairing()">🔗 連線配對</button>
+        <button class="btn btn-outline" style="margin-top:10px;" onclick="cancelPairing()">取消</button>
     </div>
 
-    <div id="start-layer" onclick="startDisplay()"></div> <div id="display-mode">
+    <div id="setup-page" class="page center-layout">
+        <h2>這是給誰的？</h2>
+        <input type="text" id="setup-name" class="input-field" placeholder="對方暱稱 (例: Amy)">
+        <input type="date" id="setup-bday" class="input-field">
+        <button class="btn" onclick="submitSetup()">完成設定</button>
+    </div>
+
+    <div id="control-page" class="page">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0; color:#00FFFF;">NANO REMOTE</h3>
+            <span id="user-display" style="font-size:12px; color:#888;"></span>
+        </div>
+
+        <div class="device-card">
+            <label style="color:#888; font-size:12px;">當前控制裝置</label>
+            <div style="display:flex; gap:10px;">
+                <select id="device-select" onchange="switchDevice()"></select>
+                <button onclick="showPairingPage()" style="width:auto; padding:10px 15px; margin:0;">➕</button>
+            </div>
+            <div id="connection-status" style="font-size:12px; color:#00FF00; margin-top:5px;">● 已連線</div>
+        </div>
+
+        <input type="text" id="msg-input" class="input-field" placeholder="輸入訊息...">
+        <button class="btn" onclick="sendMsg()">🚀 發送訊息</button>
+
+        <div class="preset-grid">
+            <button class="preset-btn" onclick="sendPreset('❤️ 想你了')">❤️ 想你了</button>
+            <button class="preset-btn" onclick="sendPreset('今晚吃火鍋？')">吃火鍋？</button>
+            <button class="preset-btn" onclick="sendPreset('記得帶傘 ☔')">帶傘 ☔</button>
+            <button class="preset-btn" onclick="sendPreset('加油 💪')">加油 💪</button>
+        </div>
+        <div id="toast" style="text-align:center; color:#00FF00; margin-top:20px; height:20px;"></div>
+    </div>
+
+    <div id="start-layer" onclick="startDisplay()"></div>
+    <div id="display-page" class="page" style="padding:0; background:black;">
         <div class="holo-container">
             <div id="huge-code-overlay">
-                <div class="pairing-code" id="huge-code-text">----</div>
+                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <div class="pairing-code" id="huge-text">----</div>
+                    <div style="font-size:10px; color:gray;">WAITING PAIR</div>
+                </div>
             </div>
-
-            <div id="holo-content">
-                <div class="face top" id="f-top"></div>
-                <div class="face bottom" id="f-bottom"></div>
-                <div class="face left" id="f-left"></div>
-                <div class="face right" id="f-right"></div>
-            </div>
+            <div class="face top" id="f-top"></div>
+            <div class="face bottom" id="f-bottom"></div>
+            <div class="face left" id="f-left"></div>
+            <div class="face right" id="f-right"></div>
         </div>
-    </div>
-
-    <div id="control-mode">
-        <h2>NANO REMOTE</h2>
-        <div id="welcome-msg" style="color:#00FFFF; margin-bottom:20px;"></div>
-        
-        <label style="color:gray; display:block; margin-bottom:10px;">發送訊息</label>
-        <input type="text" id="msg-input" class="input-field" placeholder="輸入內容..." style="width:100%;">
-        <button class="btn" onclick="sendMsg()" style="width:100%;">🚀 發送</button>
-        
-        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; margin-top:20px;">
-            <button class="btn preset-btn" onclick="sendPreset('❤️ 想你了')">❤️ 想你了</button>
-            <button class="btn preset-btn" onclick="sendPreset('今晚吃火鍋？')">今晚吃火鍋？</button>
-            <button class="btn preset-btn" onclick="sendPreset('帶傘 ☔')">帶傘 ☔</button>
-            <button class="btn preset-btn" onclick="sendPreset('加油 💪')">加油 💪</button>
-        </div>
-        <div id="status" style="color:#00FF00; margin-top:20px;"></div>
-        
-        <p style="margin-top:50px; color:#333; font-size:12px; cursor:pointer;" onclick="clearData()">重置 App (清除資料)</p>
+        <div style="position:fixed; top:10px; left:10px; color:#333; font-size:10px;" id="disp-id-tag"></div>
     </div>
 
     <script>
         // ==========================================
-        // ⚠️ CONFIG 區域 ⚠️
+        // ⚠️ CONFIG ⚠️
         // ==========================================
         const firebaseConfig = {
-             apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
-             authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-             databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-             projectId: "weather-mvp-5e7a4",
-             storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-             messagingSenderId: "305516610730",
-             appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
+            apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
+            authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+            databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+            projectId: "weather-mvp-5e7a4",
+            storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+            messagingSenderId: "305516610730",
+            appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
         // ==========================================
 
-        // 初始化 Firebase
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 檢查是否已經有角色 (自動登入)
-        const savedRole = localStorage.getItem('nano_role');
-        if (savedRole === 'display') {
-            document.getElementById('landing-page').style.display = 'none';
-            setupDisplay();
-        } else if (savedRole === 'remote') {
-            document.getElementById('landing-page').style.display = 'none';
-            // 檢查是否註冊過
-            if (localStorage.getItem('nano_user_name')) {
-                // 檢查是否配對過
-                if (localStorage.getItem('nano_target_id')) {
-                    setupRemote();
+        // 自動登入判斷
+        const role = localStorage.getItem('nano_role');
+        if (role === 'display') {
+            switchPage('display-page');
+            initDisplay();
+        } else if (role === 'remote') {
+            if (localStorage.getItem('nano_user')) {
+                // 有註冊過，檢查是否有裝置
+                const devices = getLocalDevices();
+                if (devices.length > 0) {
+                    switchPage('control-page');
+                    initRemote();
                 } else {
-                    document.getElementById('pairing-page').style.display = 'flex';
+                    switchPage('pairing-page');
                 }
             } else {
-                document.getElementById('register-page').style.display = 'flex';
+                switchPage('register-page');
             }
         }
 
-        // 1. 角色選擇邏輯
-        function selectRole(role) {
-            localStorage.setItem('nano_role', role);
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
             document.getElementById('landing-page').style.display = 'none';
-            
-            if (role === 'display') {
-                setupDisplay();
+            document.getElementById(pageId).style.display = (pageId === 'landing-page') ? 'flex' : 'flex';
+            if(pageId === 'control-page') document.getElementById(pageId).style.display = 'block';
+        }
+
+        function selectRole(r) {
+            localStorage.setItem('nano_role', r);
+            if (r === 'display') {
+                switchPage('display-page');
+                initDisplay();
             } else {
-                // 遙控器流程：先註冊 -> 再配對 -> 再控制
-                document.getElementById('register-page').style.display = 'flex';
+                if(localStorage.getItem('nano_user')) switchPage('pairing-page');
+                else switchPage('register-page');
             }
         }
 
-        // 2. 遙控器 - 註冊流程
-        function submitRegistration() {
+        // === 遙控器邏輯 ===
+        function submitReg() {
             const name = document.getElementById('reg-name').value;
-            const bday = document.getElementById('reg-bday').value;
-            if (!name) { alert("請輸入暱稱"); return; }
-            
-            localStorage.setItem('nano_user_name', name);
-            localStorage.setItem('nano_user_bday', bday);
-            
-            // 轉場到配對頁
-            document.getElementById('register-page').style.display = 'none';
-            document.getElementById('pairing-page').style.display = 'flex';
+            if(!name) return alert("請輸入暱稱");
+            localStorage.setItem('nano_user', name);
+            switchPage('pairing-page');
         }
 
-       // 修改 submitPairing 函數
-        // 修正並加強除錯的配對函數
-        window.submitPairing = function() {
-            // 1. 測試按鈕是否通電
-            console.log("按鈕被點擊了"); 
+        function showPairingPage() { switchPage('pairing-page'); }
+        function cancelPairing() { 
+             if(getLocalDevices().length > 0) switchPage('control-page');
+             else alert("請至少配對一個裝置");
+        }
+
+        function submitPairing() {
+            const code = document.getElementById('pair-code').value.trim().toUpperCase();
+            if(code.length !== 4) return alert("請輸入 4 碼 ID");
             
-            // 2. 抓取輸入框
-            const inputEl = document.getElementById('pair-code');
-            if (!inputEl) {
-                alert("❌ 錯誤：找不到輸入框 (ID: pair-code)");
-                return;
-            }
+            // 暫存 ID
+            localStorage.setItem('temp_pair_id', code);
+            // 轉去設定頁
+            switchPage('setup-page');
+        }
 
-            // 3. 處理輸入值
-            const code = inputEl.value.trim().toUpperCase();
-            
-            // 4. 驗證長度
-            if (code.length !== 4) { 
-                alert(`❌ 格式錯誤：你輸入了 ${code.length} 個字，必須是 4 碼 (例如 A1B2)`); 
-                return; 
-            }
-
-            // 5. 檢查資料庫連線
-            if (typeof db === 'undefined') {
-                alert("❌ 嚴重錯誤：Firebase 資料庫沒有連線成功，請檢查 Config 或網路！");
-                return;
-            }
-
-            // 6. 開始寫入 (顯示進度)
-            const btn = document.querySelector('#pairing-page .btn');
-            const originalText = btn.innerText;
-            btn.innerText = "連線中...";
-            btn.disabled = true;
-
-            const myName = localStorage.getItem('nano_user_name') || "神秘客";
+        function submitSetup() {
+            const name = document.getElementById('setup-name').value || "我的 NANO";
+            const bday = document.getElementById('setup-bday').value;
+            const id = localStorage.getItem('temp_pair_id');
+            const owner = localStorage.getItem('nano_user');
 
             // 寫入 Firebase
-            db.ref('devices/' + code + '/owner').set({
-                name: myName,
-                pairedAt: Date.now()
+            db.ref('devices/' + id + '/settings').set({
+                recipient: name,
+                birthday: bday,
+                pairedBy: owner,
+                timestamp: Date.now()
             }).then(() => {
-                // 成功！
-                alert(`✅ 配對成功！已連接到裝置 [${code}]`);
-                localStorage.setItem('nano_target_id', code);
-                
-                // 轉場
-                document.getElementById('pairing-page').style.display = 'none';
-                
-                // 這裡我們直接呼叫設定遙控器的函數
-                if (typeof setupRemote === 'function') {
-                    setupRemote();
-                } else {
-                    location.reload(); // 如果找不到函數，直接重整頁面最保險
-                }
-
-            }).catch(error => {
-                // 失敗！(通常是權限問題或斷網)
-                alert("❌ 配對失敗：無法寫入資料庫。\n錯誤訊息：" + error.message);
-                btn.innerText = originalText;
-                btn.disabled = false;
-            });
-        };
-
-
-        // 新增：提交裝置設定 (這是送禮的關鍵步驟)
-        function submitDeviceSetup() {
-            const targetID = localStorage.getItem('temp_target_id');
-            const nickname = document.getElementById('device-nickname').value; // 例如 Amy
-            const bday = document.getElementById('device-bday').value;         // 例如 12-25
-            
-            // 這裡是遙控者的名字 (Tony)
-            const myName = localStorage.getItem('nano_user_name'); 
-
-            if(!nickname || !bday) { alert("請填寫完整資料以便提供生日驚喜"); return; }
-
-            // 寫入 Firebase (完整的裝置人設)
-            db.ref('devices/' + targetID + '/settings').set({
-                recipientName: nickname, // 收禮人名字
-                birthday: bday,          // 收禮人生日
-                pairedBy: myName,        // 送禮人名字
-                setupDate: Date.now()
-            }).then(() => {
-                // 正式完成配對
-                localStorage.setItem('nano_target_id', targetID);
-                document.getElementById('setup-page').style.display = 'none';
-                setupRemote();
-                
-                // 順便發送第一條歡迎訊息
-                pushToCloud(`Hi ${nickname}! 設定完成`, targetID);
+                // 儲存到本地列表
+                addLocalDevice(id, name);
+                switchPage('control-page');
+                initRemote();
             });
         }
 
-        // 4. 遙控器 - 主控台邏輯
-        function setupRemote() {
-            document.getElementById('control-mode').style.display = 'block';
-            const name = localStorage.getItem('nano_user_name');
-            document.getElementById('welcome-msg').innerText = `Hi, ${name} (已連線)`;
+        // 裝置列表管理
+        function getLocalDevices() {
+            return JSON.parse(localStorage.getItem('nano_my_devices') || "[]");
+        }
+        function addLocalDevice(id, name) {
+            let list = getLocalDevices();
+            // 避免重複
+            if(!list.find(d => d.id === id)) {
+                list.push({ id: id, name: name });
+                localStorage.setItem('nano_my_devices', JSON.stringify(list));
+                localStorage.setItem('nano_current_id', id); // 自動選中
+            }
+        }
+
+        function initRemote() {
+            const user = localStorage.getItem('nano_user');
+            document.getElementById('user-display').innerText = user;
+            updateDeviceSelect();
+        }
+
+        function updateDeviceSelect() {
+            const list = getLocalDevices();
+            const select = document.getElementById('device-select');
+            const current = localStorage.getItem('nano_current_id');
+            
+            select.innerHTML = "";
+            list.forEach(dev => {
+                const opt = document.createElement('option');
+                opt.value = dev.id;
+                opt.text = `${dev.name} (${dev.id})`;
+                if(dev.id === current) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchDevice() {
+            const val = document.getElementById('device-select').value;
+            localStorage.setItem('nano_current_id', val);
         }
 
         function sendMsg() {
@@ -322,58 +279,104 @@
             pushToCloud(text);
         }
         function sendPreset(text) { pushToCloud(text); }
+
         function pushToCloud(text) {
-            const targetID = localStorage.getItem('nano_target_id');
-            db.ref('devices/' + targetID + '/message').set({
-                text: text, timestamp: Date.now()
+            const target = localStorage.getItem('nano_current_id');
+            if(!target) return alert("未選擇裝置");
+
+            // 🌟 修正重點：確保路徑是 /message，並且包含 timestamp
+            db.ref('devices/' + target + '/message').set({
+                text: text,
+                timestamp: Date.now()
             }).then(() => {
-                document.getElementById('status').innerText = "發送成功";
-                setTimeout(()=>document.getElementById('status').innerText="", 2000);
+                const t = document.getElementById('toast');
+                t.innerText = "已發送";
+                setTimeout(()=>t.innerText="", 2000);
             });
         }
 
-        // 5. 顯示端 - 邏輯
-        function setupDisplay() {
-            document.getElementById('display-mode').style.display = 'block';
-            
-            // 取得或產生 ID
-            let myDeviceID = localStorage.getItem('nano_device_id');
-            if (!myDeviceID) {
-                myDeviceID = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4碼 ID
-                localStorage.setItem('nano_device_id', myDeviceID);
+        // === 顯示端邏輯 ===
+        function initDisplay() {
+            let myID = localStorage.getItem('nano_device_id');
+            if(!myID) {
+                myID = Math.random().toString(36).substring(2, 6).toUpperCase();
+                localStorage.setItem('nano_device_id', myID);
             }
+            document.getElementById('disp-id-tag').innerText = "ID: " + myID;
+            document.getElementById('start-layer').style.display = 'block'; // 等待點擊
 
-            // 顯示啟動層 (等待點擊)
-            document.getElementById('start-layer').style.display = 'block';
-            
-            // 監聽是否有主人 (配對狀態)
-            db.ref('devices/' + myDeviceID + '/owner').on('value', snap => {
-                const owner = snap.val();
-                if (owner) {
-                    // 已配對：隱藏巨碼，顯示天氣
+            // 監聽是否有主人 (settings 存在)
+            db.ref('devices/' + myID + '/settings').on('value', snap => {
+                if(snap.exists()) {
+                    // 已配對：隱藏巨碼
                     document.getElementById('huge-code-overlay').style.display = 'none';
                 } else {
-                    // 未配對：顯示巨碼 (四個面都要顯示)
-                    showHugeCode(myDeviceID);
+                    // 未配對：顯示巨碼
+                    showHugeCode(myID);
                 }
             });
 
             // 監聽訊息
-            db.ref('devices/' + myDeviceID + '/message').on('value', snap => {
+            db.ref('devices/' + myID + '/message').on('value', snap => {
                 const data = snap.val();
-                if(data && (Date.now() - data.timestamp < 10000)) {
+                if(data && (Date.now() - data.timestamp < 15000)) { // 15秒內有效
                     showMessage(data.text);
                 }
             });
 
-            // 天氣 Loop
+            startWeatherLoop();
+        }
+
+        function startDisplay() {
+            document.getElementById('start-layer').style.display = 'none';
+            const v = document.querySelectorAll('video');
+            if(v.length) v.forEach(vi => vi.play().catch(()=>{}));
+        }
+
+        function showHugeCode(code) {
+            document.getElementById('huge-code-overlay').style.display = 'block';
+            document.getElementById('huge-text').innerText = code;
+            
+            // 同步更新四個面
+            const html = `
+               <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:black;">
+                   <div style="font-size:40px; color:yellow; font-weight:bold;">${code}</div>
+                   <div style="font-size:10px; color:gray;">WAITING</div>
+               </div>
+            `;
+            updateFaces(html);
+        }
+
+        let isShowingMsg = false;
+        function showMessage(text) {
+            isShowingMsg = true;
+            // 🌟 強制隱藏巨碼層，確保訊息能被看到
+            document.getElementById('huge-code-overlay').style.display = 'none';
+
+            const html = `
+                <div class="ui-overlay" style="background:black;">
+                    <div class="msg-text">${text}</div>
+                </div>
+            `;
+            updateFaces(html);
+            
+            // 8秒後恢復天氣
+            setTimeout(() => {
+                isShowingMsg = false;
+                // 檢查是否還沒配對，如果沒配對要秀回巨碼
+                // 但通常有訊息就是已配對，所以直接回天氣
+            }, 8000);
+        }
+
+        function startWeatherLoop() {
             setInterval(() => {
-                // 如果正在顯示訊息或巨碼，就不更新天氣
-                if(document.getElementById('huge-code-overlay').style.display === 'flex') return;
-                
+                if(isShowingMsg) return;
+                // 如果正在顯示巨碼 (未配對)，也不要蓋掉它
+                if(document.getElementById('huge-code-overlay').style.display === 'block') return;
+
                 const now = new Date();
                 const time = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit' });
-                // 這裡簡化，直接用 CSS 產生天氣介面
+                
                 const html = `
                     <video src="weather.mp4" class="bg-video" muted loop playsinline></video>
                     <div class="ui-overlay">
@@ -386,53 +389,11 @@
             }, 1000);
         }
 
-        // 顯示端 - 點擊啟動
-        function startDisplay() {
-            document.getElementById('start-layer').style.display = 'none';
-            // 嘗試播放
-            const videos = document.querySelectorAll('video');
-            if(videos.length) videos.forEach(v => v.play().catch(()=>{}));
-        }
-
-        // 輔助功能：顯示巨型配對碼
-       // 修正後的顯示巨碼函式
-       function showHugeCode(code) {
-            const overlay = document.getElementById('huge-code-overlay');
-            overlay.style.display = 'flex';
-            
-            // 🌟 關鍵修正：把 "----" 替換成真正的 ID
-            document.getElementById('huge-code-text').innerText = code;
-            
-            // 下面這段是為了讓金字塔四個面也顯示 (如果你已經放進底座)
-            const html = `
-                <div style="width:100%; height:100%; background:black; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                    <div style="font-size:40px; color:yellow; font-weight:bold; font-family:monospace;">${code}</div>
-                    <div style="font-size:10px; color:gray;">WAITING PAIR</div>
-                </div>
-            `;
-            updateFaces(html);
-        }
-        function showMessage(text) {
-             const html = `
-                <div class="ui-overlay" style="background:black;">
-                    <div class="msg-text">${text}</div>
-                </div>
-            `;
-            updateFaces(html);
-        }
-
         function updateFaces(html) {
             ['f-top', 'f-bottom', 'f-left', 'f-right'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) el.innerHTML = html;
             });
-        }
-
-        function clearData() {
-            if(confirm("確定要重置？這會清除配對和註冊資料。")) {
-                localStorage.clear();
-                location.reload();
-            }
         }
     </script>
 </body>
