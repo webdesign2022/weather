@@ -96,12 +96,19 @@
             <h3 style="margin:0; color:#00FFFF;">NANO REMOTE</h3>
             <span id="user-display" style="font-size:12px; color:#888;"></span>
         </div>
-        <div class="device-card">
+       		
+		<div class="device-card">
             <label style="color:#888; font-size:12px;">控制裝置</label>
             <div style="display:flex; gap:10px;">
                 <select id="device-select" onchange="switchDevice()"></select>
                 <button onclick="showPairingPage()" style="width:auto; padding:10px 15px; margin:0;">➕</button>
             </div>
+            
+            <div style="background:#000; padding:10px; margin-top:10px; border-radius:5px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:#888; font-size:12px;">裝置 ID:</span>
+                <span id="current-id-display" style="color:#FFFF00; font-family:monospace; font-size:18px; letter-spacing:2px; font-weight:bold;">----</span>
+            </div>
+
             <div id="connection-status" style="font-size:12px; color:#00FF00; margin-top:5px;">● 線上</div>
         </div>
         <label style="color:#00FFFF; font-size:14px; margin-bottom:10px; display:block;">THEME STORE</label>
@@ -323,16 +330,46 @@
             if(!list.find(d=>d.id===id)) { list.push({id, name}); localStorage.setItem('nano_my_devices', JSON.stringify(list)); localStorage.setItem('nano_current_id', id); }
         }
         function initRemote() {
-            document.getElementById('user-display').innerText = "用戶: " + localStorage.getItem('nano_user_phone');
-            const sel = document.getElementById('device-select'); sel.innerHTML="";
-            getLocalDevices().forEach(d => {
-                const opt = document.createElement('option'); opt.value=d.id; opt.text=d.name; 
-                if(d.id===localStorage.getItem('nano_current_id')) opt.selected=true;
-                sel.appendChild(opt);
-            });
+            document.getElementById('user-display').innerText = localStorage.getItem('nano_user_phone'); // V10.0 改用 phone
+            updateDeviceSelect();
         }
-        window.switchDevice = function() { localStorage.setItem('nano_current_id', document.getElementById('device-select').value); }
 
+        function updateDeviceSelect() {
+            const list = getLocalDevices();
+            const select = document.getElementById('device-select');
+            const current = localStorage.getItem('nano_current_id');
+            
+            select.innerHTML = "";
+            
+            if (list.length === 0) {
+                // 如果沒裝置
+                select.innerHTML = "<option>無裝置</option>";
+                document.getElementById('current-id-display').innerText = "----";
+                return;
+            }
+
+            list.forEach(dev => {
+                const opt = document.createElement('option');
+                opt.value = dev.id;
+                opt.text = dev.name; // 下拉選單只顯示名字就好，比較乾淨
+                if(dev.id === current) opt.selected = true;
+                select.appendChild(opt);
+            });
+            
+            // 初始化後，手動觸發一次更新 ID 顯示
+            switchDevice();
+        }
+
+        window.switchDevice = function() { 
+            const select = document.getElementById('device-select');
+            const val = select.value;
+            
+            if (val && val !== '無裝置') {
+                localStorage.setItem('nano_current_id', val);
+                // 🌟 更新黃色大字 ID
+                document.getElementById('current-id-display').innerText = val; 
+            }
+        }
         // === 顯示端 ===
         function initDisplay() {
             let myID = localStorage.getItem('nano_device_id');
