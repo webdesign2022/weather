@@ -4,31 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>NANO V9.4 FIXED</title>
+    <title>NANO BANANA V10.0</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;500&display=swap" rel="stylesheet">
 
     <style>
+        /* (樣式沿用 V9.5，只新增登入相關樣式，為節省篇幅省略重複部分) */
         #error-console { position: fixed; top: 0; left: 0; width: 100%; z-index: 999999; background: rgba(100, 0, 0, 0.9); color: #ffcccc; padding: 10px; font-family: monospace; font-size: 12px; display: none; border-bottom: 2px solid red; white-space: pre-wrap; }
-        
         * { box-sizing: border-box; }
         body { margin: 0; background-color: #000; color: #fff; font-family: 'Roboto', sans-serif; height: 100vh; overflow: hidden; }
-
-        /* UI 元件修正 */
         .btn { background: linear-gradient(135deg, #00FFFF, #0088FF); color: black; border: none; padding: 15px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn:active { transform: scale(0.98); }
-        
-        /* 🌟 修正：取消按鈕樣式，讓它看起來像按鈕，不像輸入框 */
         .btn-cancel { background: #333; color: #aaa; border: none; padding: 15px; font-size: 16px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 10px; }
-        
         .input-field { background: #222; border: 1px solid #444; color: white; padding: 15px; border-radius: 10px; width: 100%; font-size: 16px; margin-bottom: 15px; text-align: center; }
         .page { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; padding: 30px; background: #000; z-index: 10; overflow-y: auto; }
         .center-layout { justify-content: center; align-items: center; }
         #reset-btn { position: fixed; bottom: 10px; right: 10px; z-index: 99999; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; font-size: 10px; border-radius: 5px; cursor: pointer; }
-
-        /* Display */
         .holo-container { position: absolute; width: 320px; height: 320px; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); }
         .face { position: absolute; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         .bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.8; z-index: 1; transition: opacity 1s; }
@@ -43,8 +36,6 @@
         .left { top: 110px; left: 0; transform: rotate(90deg); }
         .right { top: 110px; right: 0; transform: rotate(-90deg); }
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
-
-        /* Remote */
         .store-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .theme-card { background: #222; border: 1px solid #444; border-radius: 10px; padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; }
         .theme-card:hover { border-color: #00FFFF; background: #333; }
@@ -53,7 +44,6 @@
         .theme-name { font-size: 12px; color: #ccc; }
         .device-card { background: #222; border-radius: 10px; padding: 15px; margin-bottom: 20px; border: 1px solid #333; }
         select { width: 100%; padding: 10px; background: #000; color: #fff; border: 1px solid #444; border-radius: 5px; }
-
         #start-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; display: none; cursor: pointer; }
         #device-id-tag { position: fixed; top: 15px; left: 15px; z-index: 999; color: rgba(255,255,255,0.3); font-size: 10px; font-family: monospace; pointer-events: none; }
     </style>
@@ -65,15 +55,26 @@
 
     <div id="landing-page" class="page center-layout" style="display:flex;">
         <h1 style="font-family:'Orbitron'; color:#00FFFF; font-size:50px; margin-bottom:10px;">🍌 NANO</h1>
-        <p style="color:#666; margin-bottom:50px;">VERSION 9.4 (FINAL)</p>
+        <p style="color:#666; margin-bottom:50px;">CLOUD SYNC V10.0</p>
         <button class="btn" onclick="selectRole('display')">📺 我是顯示器</button>
         <button class="btn" style="background:transparent; border:1px solid #00FFFF; color:#00FFFF" onclick="selectRole('remote')">📱 我是遙控器</button>
     </div>
 
+    <div id="display-init-page" class="page center-layout">
+        <h2>顯示器設定</h2>
+        <button class="btn" onclick="initDisplayNew()">✨ 產生新 ID</button>
+        <button class="btn" style="background:#333; border:1px solid #555;" onclick="showRecoverInput()">🔗 我已有 ID (恢復)</button>
+        <div id="recover-area" style="display:none; width:100%; margin-top:20px;">
+            <input type="text" id="old-id-input" class="input-field" placeholder="輸入舊 ID (4碼)" maxlength="4">
+            <button class="btn" onclick="initDisplayRecover()">確認恢復</button>
+        </div>
+    </div>
+
     <div id="register-page" class="page center-layout">
-        <h2>建立檔案</h2>
-        <input type="text" id="reg-name" class="input-field" placeholder="你的暱稱">
-        <button class="btn" onclick="submitReg()">下一步</button>
+        <h2>登入 / 註冊</h2>
+        <p style="color:#888;">使用手機號碼同步所有裝置</p>
+        <input type="tel" id="reg-phone" class="input-field" placeholder="手機號碼 (例如 0912345678)">
+        <button class="btn" onclick="submitLogin()">登入 / 開始</button>
     </div>
 
     <div id="pairing-page" class="page center-layout">
@@ -95,7 +96,6 @@
             <h3 style="margin:0; color:#00FFFF;">NANO REMOTE</h3>
             <span id="user-display" style="font-size:12px; color:#888;"></span>
         </div>
-
         <div class="device-card">
             <label style="color:#888; font-size:12px;">控制裝置</label>
             <div style="display:flex; gap:10px;">
@@ -104,7 +104,6 @@
             </div>
             <div id="connection-status" style="font-size:12px; color:#00FF00; margin-top:5px;">● 線上</div>
         </div>
-
         <label style="color:#00FFFF; font-size:14px; margin-bottom:10px; display:block;">THEME STORE</label>
         <div class="store-grid">
             <div class="theme-card active" onclick="sendTheme('weather')">
@@ -120,7 +119,6 @@
                 <div class="theme-icon">🤖</div><div class="theme-name">賽博龐克</div>
             </div>
         </div>
-
         <label style="color:gray; font-size:12px; margin-bottom:5px; display:block;">發送文字</label>
         <input type="text" id="msg-input" class="input-field" placeholder="輸入訊息...">
         <button class="btn" onclick="sendMsg()">🚀 發送</button>
@@ -146,25 +144,21 @@
 
     <script>
         window.onerror = function(msg, url, line) {
-            const el = document.getElementById('error-console');
-            el.style.display = 'block';
-            el.innerText = `❌ 錯誤: ${msg} (Line: ${line})\n請檢查 Config 或語法錯誤`;
-            return false;
+            const el = document.getElementById('error-console'); el.style.display = 'block';
+            el.innerText = `❌ 錯誤: ${msg} (Line: ${line})\n請檢查 Config 或語法錯誤`; return false;
         };
 
         // ==========================================
-        // ⚠️ 1. FIREBASE CONFIG ⚠️
+        // ⚠️ CONFIG ⚠️
         // ==========================================
         const firebaseConfig = {
-              authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-			  databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-			  projectId: "weather-mvp-5e7a4",
-			  torageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-			  messagingSenderId: "305516610730",
-			  appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
+            authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+			databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+			projectId: "weather-mvp-5e7a4",
+			storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+			messagingSenderId: "305516610730",
+			appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
-        // ==========================================
-        // ⚠️ 2. Weather API (選填) ⚠️
         const WEATHER_API_KEY = "2a9f23e62ebd74a5f2a78e10c105dca7"; 
         // ==========================================
 
@@ -172,20 +166,25 @@
         let currentTheme = 'weather';
         let weatherData = { temp: 24, city: 'Taipei', desc: 'Clouds' };
         let isShowingMsg = false;
+        let wakeLock = null;
 
         try {
             if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
             db = firebase.database();
-        } catch (e) {
-            alert("Firebase Init Failed: " + e.message);
-        }
+        } catch (e) { alert("Init Error: " + e.message); }
 
+        // 路由
         const role = localStorage.getItem('nano_role');
-        if (role === 'display') { switchPage('display-page'); initDisplay(); }
-        else if (role === 'remote') {
-            if (localStorage.getItem('nano_user')) {
-                if (getLocalDevices().length > 0) { switchPage('control-page'); initRemote(); }
-                else switchPage('pairing-page');
+        if (role === 'display') { 
+            if(localStorage.getItem('nano_device_id')) { switchPage('display-page'); initDisplay(); }
+            else switchPage('display-init-page');
+        } else if (role === 'remote') {
+            if (localStorage.getItem('nano_user_phone')) {
+                // 自動登入：檢查本地是否有裝置，若無則從雲端拉取
+                syncDevicesFromCloud(() => {
+                    if (getLocalDevices().length > 0) { switchPage('control-page'); initRemote(); }
+                    else switchPage('pairing-page');
+                });
             } else switchPage('register-page');
         } else {
             switchPage('landing-page');
@@ -193,26 +192,91 @@
 
         function switchPage(id) {
             document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-            const displayType = (id === 'landing-page' || id.includes('register') || id.includes('pairing') || id.includes('setup')) ? 'flex' : 'block';
+            const displayType = (id === 'landing-page' || id.includes('register') || id.includes('pairing') || id.includes('setup') || id.includes('init')) ? 'flex' : 'block';
             document.getElementById(id).style.display = displayType;
         }
 
         window.selectRole = function(r) { 
             if(!db) { alert("系統未連線"); return; }
             localStorage.setItem('nano_role', r); 
-            location.reload(); 
+            if(r === 'display') {
+                if(localStorage.getItem('nano_device_id')) { switchPage('display-page'); initDisplay(); }
+                else switchPage('display-init-page');
+            } else location.reload();
         };
         window.resetApp = function() {
             if(confirm("重置App？")) { localStorage.clear(); location.reload(); }
         };
 
-        // 遙控器
-        window.submitReg = function() { 
-            const name = document.getElementById('reg-name').value;
-            if(!name) return alert("請輸入暱稱");
-            localStorage.setItem('nano_user', name); 
-            switchPage('pairing-page'); 
+        // === 顯示端初始化 ===
+        window.initDisplayNew = function() {
+            const newID = Math.random().toString(36).substring(2,6).toUpperCase();
+            localStorage.setItem('nano_device_id', newID);
+            switchPage('display-page'); initDisplay();
         };
+        window.showRecoverInput = function() { document.getElementById('recover-area').style.display = 'block'; };
+        window.initDisplayRecover = function() {
+            const oldID = document.getElementById('old-id-input').value.trim().toUpperCase();
+            if(oldID.length !== 4) return alert("請輸入4碼");
+            localStorage.setItem('nano_device_id', oldID);
+            switchPage('display-page'); initDisplay();
+        };
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
+        }
+
+        // === 遙控器邏輯 (核心升級：雲端同步) ===
+        
+        // 1. 登入/註冊
+        window.submitLogin = function() { 
+            const phone = document.getElementById('reg-phone').value.trim();
+            if(!phone) return alert("請輸入手機號碼");
+            
+            // 簡單格式化 (去除非數字)
+            const cleanPhone = phone.replace(/[^0-9]/g, '');
+            localStorage.setItem('nano_user_phone', cleanPhone);
+            
+            // 嘗試從雲端拉取舊資料
+            syncDevicesFromCloud(() => {
+                if (getLocalDevices().length > 0) {
+                    alert("歡迎回來！已同步您的裝置列表。");
+                    switchPage('control-page'); 
+                    initRemote();
+                } else {
+                    switchPage('pairing-page'); 
+                }
+            });
+        };
+
+        // 2. 從雲端同步裝置列表
+        function syncDevicesFromCloud(callback) {
+            const phone = localStorage.getItem('nano_user_phone');
+            if(!phone) return;
+
+            db.ref('users/' + phone + '/devices').once('value').then(snap => {
+                if (snap.exists()) {
+                    // 雲端有資料，覆蓋本地
+                    const cloudDevices = snap.val();
+                    localStorage.setItem('nano_my_devices', JSON.stringify(cloudDevices));
+                    
+                    // 如果本地沒有選中的裝置，預設選第一個
+                    if(!localStorage.getItem('nano_current_id') && cloudDevices.length > 0) {
+                        localStorage.setItem('nano_current_id', cloudDevices[0].id);
+                    }
+                }
+                if (callback) callback();
+            });
+        }
+
+        // 3. 備份裝置列表到雲端
+        function backupDevicesToCloud() {
+            const phone = localStorage.getItem('nano_user_phone');
+            const devices = getLocalDevices();
+            if(phone) {
+                db.ref('users/' + phone + '/devices').set(devices);
+            }
+        }
+
         window.showPairingPage = function() { switchPage('pairing-page'); };
         window.cancelPairing = function() { switchPage('control-page'); };
         window.submitPairing = function() { 
@@ -221,21 +285,21 @@
             localStorage.setItem('temp_pair_id', code); 
             switchPage('setup-page'); 
         };
-        
-        // 🌟🌟🌟 修正：補上生日資料寫入 🌟🌟🌟
         window.submitSetup = function() {
             const id = localStorage.getItem('temp_pair_id');
             const name = document.getElementById('setup-name').value;
-            const bday = document.getElementById('setup-bday').value; // 抓取生日
-
-            if(!name || !bday) { alert("請填寫完整資料"); return; } // 防呆
-
+            const bday = document.getElementById('setup-bday').value;
+            if(!name || !bday) { alert("請填寫完整資料"); return; }
+            
             db.ref('devices/'+id+'/settings').set({ 
                 recipient: name, 
-                birthday: bday, // 寫入生日
-                pairedBy: localStorage.getItem('nano_user') 
+                birthday: bday, 
+                pairedBy: localStorage.getItem('nano_user_phone') 
             }).then(()=>{
-                addLocalDevice(id, name); switchPage('control-page'); initRemote();
+                addLocalDevice(id, name); 
+                backupDevicesToCloud(); // 🌟 關鍵：配對完馬上備份
+                switchPage('control-page'); 
+                initRemote();
             });
         };
         
@@ -259,7 +323,7 @@
             if(!list.find(d=>d.id===id)) { list.push({id, name}); localStorage.setItem('nano_my_devices', JSON.stringify(list)); localStorage.setItem('nano_current_id', id); }
         }
         function initRemote() {
-            document.getElementById('user-display').innerText = localStorage.getItem('nano_user');
+            document.getElementById('user-display').innerText = "用戶: " + localStorage.getItem('nano_user_phone');
             const sel = document.getElementById('device-select'); sel.innerHTML="";
             getLocalDevices().forEach(d => {
                 const opt = document.createElement('option'); opt.value=d.id; opt.text=d.name; 
@@ -269,10 +333,9 @@
         }
         window.switchDevice = function() { localStorage.setItem('nano_current_id', document.getElementById('device-select').value); }
 
-        // 顯示端邏輯
+        // === 顯示端 ===
         function initDisplay() {
             let myID = localStorage.getItem('nano_device_id');
-            if(!myID) { myID = Math.random().toString(36).substring(2,6).toUpperCase(); localStorage.setItem('nano_device_id', myID); }
             document.getElementById('disp-id-tag').innerText = "ID: " + myID;
             document.getElementById('start-layer').style.display = 'block';
 
@@ -298,21 +361,16 @@
             if (!WEATHER_API_KEY) {
                 const weathers = ['Clear', 'Rain', 'Clouds'];
                 const cities = ['Taipei', 'Tokyo', 'London'];
-                weatherData = {
-                    temp: Math.floor(Math.random() * 15) + 15,
-                    city: cities[Math.floor(Math.random() * cities.length)],
-                    desc: weathers[Math.floor(Math.random() * weathers.length)]
-                };
+                weatherData = { temp: 15 + Math.floor(Math.random()*15), city: cities[Math.floor(Math.random()*cities.length)], desc: weathers[Math.floor(Math.random()*weathers.length)] };
                 return;
             }
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
-                    const { latitude, longitude } = pos.coords;
-                    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}&units=metric`;
+                    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&appid=${WEATHER_API_KEY}&units=metric`;
                     fetch(url).then(res => res.json()).then(data => {
                         weatherData = { temp: Math.round(data.main.temp), city: data.name, desc: data.weather[0].main };
                         renderScene();
-                    }).catch(e => console.log(e));
+                    });
                 });
             }
         }
@@ -320,14 +378,13 @@
         window.startDisplay = function() {
             document.getElementById('start-layer').style.display = 'none';
             document.querySelectorAll('video').forEach(v=>v.play().catch(()=>{}));
+            requestWakeLock();
         };
 
         function renderScene() {
             if (isShowingMsg || document.getElementById('huge-code-overlay').style.display === 'flex') return;
-
             const now = new Date();
             const time = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit' });
-            
             let videoSrc = 'weather_clear.mp4'; 
             let overlayHtml = '';
 
@@ -336,20 +393,12 @@
                 if (w.includes('rain') || w.includes('drizzle')) videoSrc = 'weather_rain.mp4';
                 else videoSrc = 'weather_clear.mp4';
                 overlayHtml = `<div class="time">${time}</div><div class="weather-info">${weatherData.city.toUpperCase()} ${weatherData.temp}°C</div>`;
-            } else if (currentTheme === 'jellyfish') {
-                videoSrc = 'theme_jelly.mp4';
-                overlayHtml = ''; 
-            } else if (currentTheme === 'rain') {
-                videoSrc = 'weather_rain.mp4';
-                overlayHtml = `<div class="time">${time}</div>`;
-            } else if (currentTheme === 'cyber') {
-                 videoSrc = 'theme_jelly.mp4'; 
-                 overlayHtml = `<div class="time" style="color:#00FFFF; text-shadow:0 0 10px blue;">${time}</div>`;
-            }
+            } else if (currentTheme === 'jellyfish') { videoSrc = 'theme_jelly.mp4'; overlayHtml = ''; }
+            else if (currentTheme === 'rain') { videoSrc = 'weather_rain.mp4'; overlayHtml = `<div class="time">${time}</div>`; }
+            else if (currentTheme === 'cyber') { videoSrc = 'theme_jelly.mp4'; overlayHtml = `<div class="time" style="color:#00FFFF; text-shadow:0 0 10px blue;">${time}</div>`; }
 
             const html = `<video src="${videoSrc}" class="bg-video" muted loop playsinline></video><div class="ui-overlay">${overlayHtml}</div>`;
             updateFaces(html);
-            
             const vids = document.querySelectorAll('video');
             vids.forEach(v => {
                  if (!v.currentSrc.includes(videoSrc)) { v.src = videoSrc; v.play().catch(()=>{}); } 
