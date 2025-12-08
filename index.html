@@ -50,7 +50,26 @@
         
         /* 訊息特效 */
         .msg-container { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .msg-text { font-size: 20px; font-weight: bold; color: #FF00FF; text-shadow: 0 0 10px #FF00FF; }
+      /* 純文字版樣式：字體加大，行距優化 */
+        .msg-text { 
+            width: 100%;             /* 佔滿寬度 */
+            height: 100%;            /* 佔滿高度 */
+            display: flex;           /* 使用 Flexbox 排版 */
+            align-items: center;     /* 垂直置中 (關鍵) */
+            justify-content: center; /* 水平置中 */
+            
+            font-size: 20px;         /* 字體放大，因為沒有香蕉了 */
+            line-height: 1.4;        /* 舒適的行高 */
+            font-weight: 800;        /* 粗體更像全息投影 */
+            color: #FF00FF; 
+            text-shadow: 0 0 8px #FF00FF; /* 加強霓虹光暈 */
+            
+            /* 長文保護機制 */
+            overflow: hidden;
+            word-break: break-all;
+            padding: 0 5px;          /* 左右留一點邊距 */
+            box-sizing: border-box;
+        }
         
         /* 四面定位 */
         .top { top: 0; left: 110px; transform: rotate(180deg); }
@@ -189,16 +208,17 @@
                 }
             });
 
-            function showMessage(text) {
+           function showMessage(text) {
                 isShowingMessage = true;
-                // 訊息模式：純黑背景 + 霓虹文字 (不放影片，避免太亂)
-                const content = `
+                
+                // 修正：移除香蕉，只保留文字容器
+                const msgHTML = `
                     <div class="ui-overlay msg-container">
-                        <div class="msg-text" style="font-size:24px;">${text}</div>
-                        <div style="font-size:40px; margin-top:10px;">🍌</div>
+                        <div class="msg-text">${text}</div>
                     </div>
                 `;
-                updateFaces(content);
+                
+                updateFaces(msgHTML);
 
                 // 8秒後切回天氣
                 setTimeout(() => {
