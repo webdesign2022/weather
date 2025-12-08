@@ -218,16 +218,68 @@
         }
 
        // 修改 submitPairing 函數
-        function submitPairing() {
-            const code = document.getElementById('pair-code').value.trim().toUpperCase();
-            if (code.length !== 4) { alert("請輸入 4 位數代碼"); return; }
+        // 修正並加強除錯的配對函數
+        window.submitPairing = function() {
+            // 1. 測試按鈕是否通電
+            console.log("按鈕被點擊了"); 
             
-            // 暫存配對碼，先不寫入資料庫，先轉場去填寫「收禮人資料」
-            localStorage.setItem('temp_target_id', code);
+            // 2. 抓取輸入框
+            const inputEl = document.getElementById('pair-code');
+            if (!inputEl) {
+                alert("❌ 錯誤：找不到輸入框 (ID: pair-code)");
+                return;
+            }
+
+            // 3. 處理輸入值
+            const code = inputEl.value.trim().toUpperCase();
             
-            document.getElementById('pairing-page').style.display = 'none';
-            document.getElementById('setup-page').style.display = 'flex'; // 顯示設定頁
-        }
+            // 4. 驗證長度
+            if (code.length !== 4) { 
+                alert(`❌ 格式錯誤：你輸入了 ${code.length} 個字，必須是 4 碼 (例如 A1B2)`); 
+                return; 
+            }
+
+            // 5. 檢查資料庫連線
+            if (typeof db === 'undefined') {
+                alert("❌ 嚴重錯誤：Firebase 資料庫沒有連線成功，請檢查 Config 或網路！");
+                return;
+            }
+
+            // 6. 開始寫入 (顯示進度)
+            const btn = document.querySelector('#pairing-page .btn');
+            const originalText = btn.innerText;
+            btn.innerText = "連線中...";
+            btn.disabled = true;
+
+            const myName = localStorage.getItem('nano_user_name') || "神秘客";
+
+            // 寫入 Firebase
+            db.ref('devices/' + code + '/owner').set({
+                name: myName,
+                pairedAt: Date.now()
+            }).then(() => {
+                // 成功！
+                alert(`✅ 配對成功！已連接到裝置 [${code}]`);
+                localStorage.setItem('nano_target_id', code);
+                
+                // 轉場
+                document.getElementById('pairing-page').style.display = 'none';
+                
+                // 這裡我們直接呼叫設定遙控器的函數
+                if (typeof setupRemote === 'function') {
+                    setupRemote();
+                } else {
+                    location.reload(); // 如果找不到函數，直接重整頁面最保險
+                }
+
+            }).catch(error => {
+                // 失敗！(通常是權限問題或斷網)
+                alert("❌ 配對失敗：無法寫入資料庫。\n錯誤訊息：" + error.message);
+                btn.innerText = originalText;
+                btn.disabled = false;
+            });
+        };
+
 
         // 新增：提交裝置設定 (這是送禮的關鍵步驟)
         function submitDeviceSetup() {
