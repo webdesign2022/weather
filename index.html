@@ -3,106 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NANO BANANA - Ultimate MVP</title>
+    <title>NANO BANANA - MultiUser</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <style>
-        body {
-            margin: 0; background-color: #000; color: #00FFFF;
-            font-family: 'Arial', sans-serif; height: 100vh; overflow: hidden;
-        }
+        body { margin: 0; background-color: #000; color: #00FFFF; font-family: 'Arial', sans-serif; height: 100vh; overflow: hidden; }
 
-        /* === 顯示模式 (Receiver) === */
+        /* === 顯示端 (Receiver) === */
         #display-mode { display: none; width: 100%; height: 100%; }
+        .holo-container { position: relative; width: 320px; height: 320px; margin: auto; top: 50%; transform: translateY(-50%); }
+        .face { position: absolute; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         
-        .holo-container {
-            position: relative; width: 320px; height: 320px;
-            margin: auto; top: 50%; transform: translateY(-50%);
+        /* 設備 ID 顯示 (顯示在左上角) */
+        #device-id-tag {
+            position: fixed; top: 10px; left: 10px; z-index: 999;
+            color: #333; font-size: 12px; background: rgba(255,255,255,0.1);
+            padding: 5px; border-radius: 4px; font-family: monospace;
         }
 
-        .face {
-            position: absolute; width: 100px; height: 100px;
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden; /* 確保影片不超出 */
-        }
-
-        /* 影片樣式 (背景層) */
-        .bg-video {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; object-fit: cover;
-            opacity: 0.6; /* 稍微調暗，讓文字清楚 */
-            z-index: 1;
-        }
-
-        /* 資訊樣式 (UI層) */
-        .ui-overlay {
-            position: absolute; z-index: 10;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            width: 100%; height: 100%;
-            text-align: center;
-        }
-
+        .bg-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; z-index: 1; }
+        
+        .ui-overlay { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; text-align: center; padding: 5px; box-sizing: border-box; }
         .time { font-size: 22px; font-weight: 800; color: #fff; text-shadow: 2px 2px 0px #000; }
         .date { font-size: 10px; color: #FFFF00; font-weight: bold; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 10px; margin-top: 5px; }
-        
-        /* 訊息特效 */
-        .msg-container { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-      /* 純文字版樣式：字體加大，行距優化 */
+
+        /* 純文字訊息樣式 */
         .msg-text { 
-            width: 100%;             /* 佔滿寬度 */
-            height: 100%;            /* 佔滿高度 */
-            display: flex;           /* 使用 Flexbox 排版 */
-            align-items: center;     /* 垂直置中 (關鍵) */
-            justify-content: center; /* 水平置中 */
-            
-            font-size: 20px;         /* 字體放大，因為沒有香蕉了 */
-            line-height: 1.4;        /* 舒適的行高 */
-            font-weight: 800;        /* 粗體更像全息投影 */
-            color: #FF00FF; 
-            text-shadow: 0 0 8px #FF00FF; /* 加強霓虹光暈 */
-            
-            /* 長文保護機制 */
-            overflow: hidden;
-            word-break: break-all;
-            padding: 0 5px;          /* 左右留一點邊距 */
-            box-sizing: border-box;
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; line-height: 1.4; font-weight: 800; color: #FF00FF; text-shadow: 0 0 8px #FF00FF;
+            overflow: hidden; word-break: break-all; padding: 0 5px; box-sizing: border-box;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
-        /* 四面定位 */
         .top { top: 0; left: 110px; transform: rotate(180deg); }
         .bottom { bottom: 0; left: 110px; }
         .left { top: 110px; left: 0; transform: rotate(90deg); }
         .right { top: 110px; right: 0; transform: rotate(-90deg); }
-
         @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
 
-        /* === 控制器模式 (Controller) === */
+        /* === 控制端 (Controller) === */
         #control-mode { display: none; padding: 20px; text-align: center; background: #111; height: 100vh; }
-        input { width: 80%; padding: 15px; font-size: 18px; margin-bottom: 20px; border-radius: 10px; border: none; }
-        button { width: 90%; padding: 15px; font-size: 20px; background: #00FFFF; color: #000; border: none; border-radius: 10px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
+        input { width: 80%; padding: 15px; font-size: 16px; margin-bottom: 15px; border-radius: 10px; border: none; background: #222; color: white; text-align: center; }
+        button { width: 90%; padding: 15px; font-size: 18px; background: #00FFFF; color: #000; border: none; border-radius: 10px; font-weight: bold; margin-bottom: 10px; cursor: pointer; }
         .preset-btn { background: #333; color: #FFF; width: 45%; }
+        label { color: gray; font-size: 12px; display: block; margin-bottom: 5px; }
 
-        /* 點擊播放遮罩 */
-        #start-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 999;
-            display: flex; justify-content: center; align-items: center; color: white;
-            flex-direction: column; cursor: pointer;
-        }
-    </style>
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 999; display: flex; justify-content: center; align-items: center; color: white; flex-direction: column; cursor: pointer; }
+    </script>
 </head>
 <body>
 
     <div id="start-overlay" onclick="startApp()">
         <h1>🍌 NANO BANANA</h1>
-        <p>點擊螢幕啟動全息系統</p>
+        <p id="start-text">點擊螢幕啟動</p>
     </div>
 
     <div id="display-mode">
-        <div class="holo-container">
+        <div id="device-id-tag">ID:Loading...</div> <div class="holo-container">
             <div style="position:absolute; top:50%; left:50%; width:8px; height:8px; background:red; border-radius:50%; transform:translate(-50%,-50%); opacity:0.3;"></div>
             <div class="face top" id="f-top"></div>
             <div class="face bottom" id="f-bottom"></div>
@@ -113,6 +72,12 @@
 
     <div id="control-mode">
         <h2 style="color:white;">NANO REMOTE</h2>
+        
+        <div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px;">
+            <label>發送給 (對方ID):</label>
+            <input type="text" id="target-id" placeholder="例如: A1B2" style="background:#000; margin-bottom:0;">
+        </div>
+
         <input type="text" id="msg-input" placeholder="輸入訊息...">
         <button onclick="sendMsg()">🚀 發送</button>
         <div style="display:flex; flex-wrap:wrap; justify-content:space-between; padding:0 5%;">
@@ -126,56 +91,103 @@
 
     <script>
         // ==========================================
-        // ⚠️ 把你的 Firebase Config 貼在這裡 ⚠️
+        // ⚠️ 貼上你的 Firebase Config ⚠️
         // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyCX8XssChQjMIZZmNPYuQY93Pv5YMcYrrw",
-  authDomain: "weather-mvp-5e7a4.firebaseapp.com",
-  databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
-  projectId: "weather-mvp-5e7a4",
-  storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
-  messagingSenderId: "305516610730",
-  appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
+            authDomain: "weather-mvp-5e7a4.firebaseapp.com",
+            databaseURL: "https://weather-mvp-5e7a4-default-rtdb.firebaseio.com",
+            projectId: "weather-mvp-5e7a4",
+            storageBucket: "weather-mvp-5e7a4.firebasestorage.app",
+            messagingSenderId: "305516610730",
+            appId: "1:305516610730:web:9db2a3396beb95a7eb3cd3"
         };
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 模式判斷
+        // 判斷模式
         const urlParams = new URLSearchParams(window.location.search);
         const isController = urlParams.get('mode') === 'control';
+        let myDeviceID = localStorage.getItem('nano_device_id');
+
+        // === 產生隨機 ID 的函數 (4碼英文數字) ===
+        function generateID() {
+            return Math.random().toString(36).substring(2, 6).toUpperCase();
+        }
 
         // 啟動函數
         function startApp() {
             document.getElementById('start-overlay').style.display = 'none';
-            // 嘗試播放所有影片 (如果有)
-            document.querySelectorAll('video').forEach(v => v.play().catch(e => console.log(e)));
+            document.querySelectorAll('video').forEach(v => v.play().catch(e=>{}));
         }
 
         if (isController) {
-            // === 控制器邏輯 ===
-            document.getElementById('start-overlay').style.display = 'none'; // 控制器不需要點擊開始
+            // ================= 控制器邏輯 =================
+            document.getElementById('start-overlay').style.display = 'none';
             document.getElementById('control-mode').style.display = 'block';
 
-            function sendMsg() { pushToCloud(document.getElementById('msg-input').value); }
+            // 自動讀取上次輸入的 ID
+            const savedTarget = localStorage.getItem('nano_target_id');
+            if (savedTarget) document.getElementById('target-id').value = savedTarget;
+
+            function getTargetID() {
+                const id = document.getElementById('target-id').value.trim().toUpperCase();
+                if (!id) {
+                    alert("請輸入對方的 ID！");
+                    return null;
+                }
+                // 記住這個 ID，下次不用重打
+                localStorage.setItem('nano_target_id', id);
+                return id;
+            }
+
+            function sendMsg() {
+                const text = document.getElementById('msg-input').value;
+                if(!text) return;
+                pushToCloud(text);
+            }
+
             function sendPreset(text) { pushToCloud(text); }
 
             function pushToCloud(text) {
-                if(!text) return;
-                db.ref('nano_device_01').set({ message: text, timestamp: Date.now() })
-                .then(() => {
+                const targetID = getTargetID();
+                if (!targetID) return;
+
+                const path = 'devices/' + targetID; // 寫入特定 ID 的路徑
+
+                db.ref(path).set({
+                    message: text,
+                    timestamp: Date.now()
+                }).then(() => {
                     const status = document.getElementById('status');
-                    status.innerText = "已發送: " + text;
+                    status.innerText = `已發送給 [${targetID}]`;
                     setTimeout(() => status.innerText = "", 2000);
+                }).catch(err => {
+                    alert("發送失敗，請檢查網路");
                 });
             }
 
+            // 綁定全域
+            window.sendMsg = sendMsg;
+            window.sendPreset = sendPreset;
+
         } else {
-            // === 顯示器邏輯 ===
+            // ================= 顯示器邏輯 =================
             document.getElementById('display-mode').style.display = 'block';
+            
+            // 1. 處理 ID：如果沒有，就生成一個並存起來
+            if (!myDeviceID) {
+                myDeviceID = generateID();
+                localStorage.setItem('nano_device_id', myDeviceID);
+            }
+            // 顯示 ID 在螢幕左上角 (方便配對)
+            document.getElementById('device-id-tag').innerText = "ID: " + myDeviceID;
+            document.getElementById('start-text').innerText = `點擊啟動 (ID: ${myDeviceID})`;
+
             let isShowingMessage = false;
 
-            // 1. 渲染天氣 (預設)
+            // 2. 渲染天氣 (預設)
             function renderWeather() {
                 if (isShowingMessage) return;
 
@@ -183,7 +195,6 @@
                 const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit' });
                 const dateStr = now.toLocaleDateString('en-US', { month:'numeric', day:'numeric', weekday:'short' });
 
-                // 這裡載入 weather.mp4
                 const content = `
                     <video src="weather.mp4" class="bg-video" muted loop playsinline></video>
                     <div class="ui-overlay">
@@ -192,35 +203,33 @@
                     </div>
                 `;
                 updateFaces(content);
-                // 確保影片播放
                 document.querySelectorAll('video').forEach(v => v.play().catch(e=>{}));
             }
-
-            // 每秒更新時間
             setInterval(renderWeather, 1000);
 
-            // 2. 監聽訊息
-            db.ref('nano_device_01').on('value', (snapshot) => {
+            // 3. 監聽專屬 ID 的路徑 (devices/我的ID)
+            const myPath = 'devices/' + myDeviceID;
+            console.log("Listening to:", myPath);
+
+            db.ref(myPath).on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (!data) return;
-                if (Date.now() - data.timestamp < 10000) { // 10秒內的新訊息
+                
+                // 10秒內的新訊息才顯示
+                if (Date.now() - data.timestamp < 10000) {
                     showMessage(data.message);
                 }
             });
 
-           function showMessage(text) {
+            function showMessage(text) {
                 isShowingMessage = true;
-                
-                // 修正：移除香蕉，只保留文字容器
                 const msgHTML = `
                     <div class="ui-overlay msg-container">
                         <div class="msg-text">${text}</div>
                     </div>
                 `;
-                
                 updateFaces(msgHTML);
 
-                // 8秒後切回天氣
                 setTimeout(() => {
                     isShowingMessage = false;
                     renderWeather();
@@ -229,10 +238,10 @@
 
             function updateFaces(html) {
                 ['f-top', 'f-bottom', 'f-left', 'f-right'].forEach(id => {
-                    // 為了避免影片一直重新加載閃爍，我們可以做個判斷，但MVP先直接覆蓋
                     document.getElementById(id).innerHTML = html;
                 });
             }
+            window.startApp = startApp;
         }
     </script>
 </body>
