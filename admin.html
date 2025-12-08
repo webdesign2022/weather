@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>NANO BANANA - ADMIN CONSOLE</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <style>
+        body { background-color: #1a1a1a; color: #e0e0e0; font-family: monospace; padding: 20px; }
+        .card { background-color: #2d2d2d; border: 1px solid #444; margin-bottom: 20px; }
+        .card-header { background-color: #333; border-bottom: 1px solid #444; font-weight: bold; color: #00FFFF; }
+        .form-control, .form-select { background-color: #222; border: 1px solid #555; color: white; }
+        .form-control:focus { background-color: #333; color: white; }
+        
+        /* 狀態燈 */
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #00FF00; box-shadow: 0 0 5px #00FF00; }
+        
+        /* 表格樣式 */
+        table { width: 100%; font-size: 14px; }
+        th { color: #888; }
+        td { padding: 8px; border-bottom: 1px solid #444; }
+        tr:hover { background-color: #333; }
+
+        /* 危險按鈕 */
+        .btn-danger-glow { background: #500; border: 1px solid red; color: white; }
+        .btn-danger-glow:hover { background: #f00; box-shadow: 0 0 15px red; }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12 d-flex justify-content-between align-items-center mb-4">
+                <h3>🍌 NANO BANANA <span style="color:#00FFFF">GOD VIEW</span></h3>
+                <div id="connection-status" class="text-secondary">連線中...</div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="card p-3 text-center">
+                            <h5 class="text-muted">總裝置數</h5>
+                            <h2 id="total-devices">0</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card p-3 text-center">
+                            <h5 class="text-muted">今日壽星</h5>
+                            <h2 id="birthday-count" style="color:#FF00FF">0</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>裝置監控列表</span>
+                        <input type="text" id="search-input" class="form-control form-control-sm" style="width: 200px;" placeholder="搜尋 ID、生日 (12-25)..." onkeyup="filterTable()">
+                    </div>
+                    <div class="card-body p-0" style="height: 500px; overflow-y: auto;">
+                        <table class="table table-dark table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>狀態</th>
+                                    <th>裝置 ID</th>
+                                    <th>收禮人 (暱稱)</th>
+                                    <th>生日</th>
+                                    <th>送禮者</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="device-table-body">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                
+                <div class="card">
+                    <div class="card-header">🚀 單一/篩選 推播</div>
+                    <div class="card-body">
+                        <label>目標裝置 ID:</label>
+                        <input type="text" id="target-id" class="form-control mb-2" placeholder="點選左側列表自動帶入">
+                        
+                        <label>發送訊息:</label>
+                        <input type="text" id="single-msg" class="form-control mb-3" placeholder="例如: 生日快樂！">
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="sendToTarget()">發送訊息</button>
+                            <button class="btn btn-outline-info btn-sm" onclick="fillMsg('🎂 Happy Birthday!')">套用: 生日祝福</button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="fillMsg('⚡ 系統維護通知')">套用: 維護通知</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="border-color: red;">
+                    <div class="card-header text-danger">☢️ 全服廣播 (Broadcast)</div>
+                    <div class="card-body">
+                        <p class="small text-muted">警告：這會覆蓋「所有」在線裝置目前的畫面。</p>
+                        
+                        <label>廣播訊息:</label>
+                        <input type="text" id="broadcast-msg" class="form-control mb-3" placeholder="例如: Happy New Year 2026!">
+                        
+                        <div class="d-grid">
+                            <button class="btn btn-danger-glow" onclick="sendBroadcast()">🔴 發送給所有人 (ALL)</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚠️ ADMIN CONFIG (請填入同一組 Config) ⚠️
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "你的API_KEY",
+            authDomain: "你的專案ID.firebaseapp.com",
+            databaseURL: "https://你的專案ID-default-rtdb.firebaseio.com",
+            projectId: "你的專案ID",
+            storageBucket: "你的專案ID.appspot.com",
+            messagingSenderId: "xxx",
+            appId: "xxx"
+        };
+        // ==========================================
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 1. 初始化監聽
+        const tableBody = document.getElementById('device-table-body');
+        let allDevices = []; // 存所有資料以便篩選
+
+        db.ref('.info/connected').on('value', snap => {
+            document.getElementById('connection-status').innerText = snap.val() ? "🟢 系統連線正常" : "🔴 斷線中";
+        });
+
+        // 2. 讀取所有裝置資料 (即時更新)
+        db.ref('devices').on('value', snapshot => {
+            tableBody.innerHTML = '';
+            allDevices = [];
+            let count = 0;
+            let bdayCount = 0;
+
+            const today = new Date();
+            const todayStr = String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+            snapshot.forEach(child => {
+                const id = child.key;
+                const data = child.val();
+                const settings = data.settings || {}; // 讀取 V7.0 的設定檔
+                
+                // 判斷是否為壽星
+                let isBday = false;
+                if (settings.birthday && settings.birthday.endsWith(todayStr)) {
+                    isBday = true;
+                    bdayCount++;
+                }
+
+                const deviceObj = {
+                    id: id,
+                    name: settings.recipientName || '(未設定)',
+                    birthday: settings.birthday || '-',
+                    sender: settings.pairedBy || '-',
+                    isBday: isBday
+                };
+                allDevices.push(deviceObj);
+                count++;
+            });
+
+            // 更新儀表板數字
+            document.getElementById('total-devices').innerText = count;
+            document.getElementById('birthday-count').innerText = bdayCount;
+
+            renderTable(allDevices);
+        });
+
+        // 3. 渲染表格函數
+        function renderTable(devices) {
+            tableBody.innerHTML = '';
+            devices.forEach(d => {
+                const row = document.createElement('tr');
+                // 如果是壽星，整行高亮
+                if(d.isBday) row.style.background = "#4a1c4a";
+
+                row.innerHTML = `
+                    <td><span class="status-dot online"></span></td>
+                    <td style="font-family:monospace; color:#00FFFF;">${d.id}</td>
+                    <td>${d.name} ${d.isBday ? '🎂' : ''}</td>
+                    <td>${d.birthday}</td>
+                    <td class="text-muted">${d.sender}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-light" onclick="selectDevice('${d.id}')">選取</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 4. 篩選功能 (搜尋 ID 或 生日)
+        function filterTable() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const filtered = allDevices.filter(d => 
+                d.id.toLowerCase().includes(query) || 
+                d.birthday.includes(query) ||
+                d.name.toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+        }
+
+        // 5. 操作邏輯
+        function selectDevice(id) {
+            document.getElementById('target-id').value = id;
+        }
+
+        function fillMsg(text) {
+            document.getElementById('single-msg').value = text;
+        }
+
+        // 發送單一訊息
+        function sendToTarget() {
+            const id = document.getElementById('target-id').value;
+            const msg = document.getElementById('single-msg').value;
+            if(!id || !msg) return alert("請輸入 ID 和訊息");
+
+            // 這裡不只是改 message，我們直接推播給該裝置
+            db.ref('devices/' + id + '/message').set({
+                text: msg,
+                timestamp: Date.now(),
+                from: 'SYSTEM_ADMIN' // 標記來源
+            }).then(() => {
+                alert(`已發送給 ${id}`);
+            });
+        }
+
+        // 發送全域廣播 (Broadcast)
+        function sendBroadcast() {
+            const msg = document.getElementById('broadcast-msg').value;
+            if(!msg) return alert("請輸入廣播內容");
+            
+            if(!confirm(`⚠️ 危險操作確認 ⚠️\n\n確定要發送 "${msg}" 給所有用戶嗎？\n這將影響目前 ${allDevices.length} 台裝置。`)) {
+                return;
+            }
+
+            // 這裡採用最簡單的迴圈寫法 (適合 MVP)
+            // 如果用戶破萬，建議改用 Firebase Functions 後端處理
+            const updates = {};
+            allDevices.forEach(d => {
+                // 批次寫入路徑
+                updates['devices/' + d.id + '/message'] = {
+                    text: msg,
+                    timestamp: Date.now(),
+                    from: 'BROADCAST'
+                };
+            });
+
+            db.ref().update(updates).then(() => {
+                alert("廣播已發送！所有裝置將同步顯示。");
+            });
+        }
+    </script>
+</body>
+</html>
