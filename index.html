@@ -343,11 +343,15 @@
         }
 
         // 輔助功能：顯示巨型配對碼
+       // 修正後的顯示巨碼函式
         function showHugeCode(code) {
             const overlay = document.getElementById('huge-code-overlay');
             overlay.style.display = 'flex';
             
-            // 我們把巨碼直接塞進四個面，這樣透過金字塔才看得到
+            // 🌟 關鍵修正：把 "----" 替換成真正的 ID
+            document.getElementById('huge-code-text').innerText = code;
+            
+            // 下面這段是為了讓金字塔四個面也顯示 (如果你已經放進底座)
             const html = `
                 <div style="width:100%; height:100%; background:black; display:flex; flex-direction:column; align-items:center; justify-content:center;">
                     <div style="font-size:40px; color:yellow; font-weight:bold; font-family:monospace;">${code}</div>
