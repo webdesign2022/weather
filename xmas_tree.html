@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>終極版手勢互動聖誕樹</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    body { margin: 0; padding: 0; background-color: #000510; overflow: hidden; font-family: 'Cinzel', serif; }
+    #video-container { position: absolute; top: 10px; left: 10px; width: 160px; height: 120px; z-index: 10; border: 1px solid #00ffff; box-shadow: 0 0 10px #00ffff; transform: scaleX(-1); opacity: 0.8; border-radius: 8px; background: #000;}
+    video { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+    #status { position: absolute; bottom: 20px; left: 20px; color: #aaddff; font-size: 18px; font-weight: bold; text-shadow: 0 0 8px #00ffff; z-index: 10; pointer-events: none; letter-spacing: 2px; line-height: 1.5; }
+    #gallery-img { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 350px; max-height: 350px; display: none; border-radius: 50%; box-shadow: 0 0 50px rgba(255, 255, 255, 0.5); pointer-events: none; border: 4px solid rgba(255, 255, 255, 0.9); z-index: 5; object-fit: cover; aspect-ratio: 1/1; }
+    #music-btn { position: absolute; top: 20px; right: 20px; z-index: 20; background: rgba(0, 50, 100, 0.4); border: 1px solid #00ffff; color: #00ffff; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: sans-serif; font-size: 14px; transition: all 0.3s; text-shadow: 0 0 5px #00ffff; }
+    #music-btn:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 15px #00ffff; }
+    .gesture-hint { position: absolute; top: 140px; left: 10px; color: rgba(255,255,255,0.7); font-size: 12px; font-family: sans-serif; line-height: 1.6; pointer-events: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; }
+    .highlight { color: #00ffff; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div id="video-container">
+    <video class="input_video" playsinline></video>
+  </div>
+  
+  <div class="gesture-hint">
+    <span class="highlight">🖐️ 張手(5指)</span>：散開互動<br>
+    <span class="highlight">👌 OK手勢</span>：冰雪螺旋樹 (Style 0)<br>
+    <span class="highlight">☝️ 比 1</span>：經典松樹 (Style 1)<br>
+    <span class="highlight">✌️ 比 2</span>：霓虹 DNA (Style 2)<br>
+    <span class="highlight">🤟 比 3</span>：層疊蛋糕 (Style 3)<br>
+    <span class="highlight">🖖 比 4</span>：量子矩陣 (Style 4)<br>
+    <span class="highlight">👍 比讚</span>：畫廊模式 (旋轉)<br>
+    <span class="highlight">🤏 捏合</span>：顯示單張照片
+  </div>
+
+  <div id="status">系統啟動中...</div>
+  <button id="music-btn">🎵 播放聖誕音樂</button>
+  <img id="gallery-img" src="" alt="Gallery Photo">
+  
+  <audio id="bg-music" loop>
+      <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3" type="audio/mpeg">
+  </audio>
+
+<script>
+let particles = [];
+// 儲存 5 種不同風格的樹點位
+let treeStyles = [[], [], [], [], []]; 
+let circlePoints = [];
+let handX = 0, handY = 0;
+let isHandDetected = false;
+let currentMode = 'TREE'; 
+let currentTreeStyle = 0; // 0=OK, 1=Index, 2=Victory, 3=Three, 4=Four
+let galleryIndex = 0;
+let lastGallerySwitchTime = 0;
+let particleCount = 1300; 
+let autoRotateAngle = 0;
+
+let photoUrls = [
+    'https://images.unsplash.com/photo-1544077960-604201fe74bc?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1511268559489-34b624fbfcf5?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1482638186012-59f940755237?auto=format&fit=crop&w=600&q=80'
+];
+
+const imgElement = document.getElementById('gallery-img');
+const statusElement = document.getElementById('status');
+const musicBtn = document.getElementById('music-btn');
+const bgMusic = document.getElementById('bg-music');
+let isMusicPlaying = false;
+
+musicBtn.addEventListener('click', () => {
+    if (isMusicPlaying) {
+        bgMusic.pause();
+        musicBtn.innerText = '🎵 播放聖誕音樂';
+        musicBtn.style.boxShadow = 'none';
+    } else {
+        bgMusic.play().catch(e => console.log("音樂播放失敗", e));
+        musicBtn.innerText = '⏸ 暫停音樂';
+        musicBtn.style.boxShadow = '0 0 15px #00ffff';
+    }
+    isMusicPlaying = !isMusicPlaying;
+});
+
+// --- P5.js Setup ---
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 1);
+  textFont('Cinzel'); 
+  
+  for (let i = 0; i < particleCount; i++) {
+    particles.push(new Particle());
+  }
+  
+  // 一次計算所有風格的點
+  calculateAllTreeStyles();
+  calculateCirclePoints();
+  
+  setTimeout(() => {
+     if(!isHandDetected) statusElement.innerText = "自動展示模式 (未偵測到手)";
+  }, 3000);
+}
+
+function draw() {
+  // 依照風格微調背景色調
+  if (currentMode === 'TREE') {
+      if (currentTreeStyle === 1) background(140, 60, 5, 0.35); // 綠色系背景
+      else if (currentTreeStyle === 2) background(280, 60, 5, 0.35); // 紫色系背景
+      else background(220, 80, 8, 0.35); // 預設藍色
+  } else {
+      background(220, 80, 8, 0.35);
+  }
+
+  autoRotateAngle += 0.005;
+
+  // 顯示文字
+  if (currentMode === 'TREE') {
+      push();
+      textAlign(CENTER, CENTER);
+      textSize(min(width / 12, 70));
+      noStroke();
+      drawingContext.shadowBlur = 30;
+      
+      // 文字顏色隨風格改變
+      let textHue = 200;
+      if (currentTreeStyle === 1) textHue = 50; // 金
+      if (currentTreeStyle === 2) textHue = 300; // 粉
+      
+      drawingContext.shadowColor = color(textHue, 60, 100); 
+      fill(textHue, 10, 100); 
+      text("MERRY CHRISTMAS", width / 2, height * 0.15);
+      pop();
+      drawingContext.shadowBlur = 0; 
+  }
+
+  // 照片顯示
+  if (currentMode === 'GALLERY' || currentMode === 'PINCH') {
+     imgElement.style.display = 'block';
+     if (currentMode === 'GALLERY' && millis() - lastGallerySwitchTime > 2500) {
+        nextPhoto();
+        lastGallerySwitchTime = millis();
+     }
+  } else {
+    imgElement.style.display = 'none';
+  }
+
+  // 粒子更新
+  particles.forEach((p, index) => {
+    let target = null;
+    let isBackground = false;
+
+    if (currentMode === 'TREE') {
+        // 根據目前的 style 選擇對應的點位陣列
+        let currentPoints = treeStyles[currentTreeStyle];
+        let treeIndex = index % currentPoints.length;
+        
+        // 自動旋轉邏輯
+        if (!isHandDetected) {
+            target = currentPoints[treeIndex]; // 自動旋轉在 behaviors 處理
+        } else {
+            target = currentPoints[treeIndex];
+        }
+
+        // --- 顏色主題設定 ---
+        let h, s, b;
+        switch(currentTreeStyle) {
+            case 0: // OK: 冰雪藍
+                h = random(170, 210); s = random(50, 90); b = random(80, 100);
+                if(random(1)>0.95) {h=200;s=0;b=100;} // 閃爍白
+                break;
+            case 1: // Style 1: 經典綠金
+                if (random(1) > 0.8) { h = 45; s = 80; b = 100; } // 金飾
+                else { h = random(90, 140); s = random(60, 90); b = random(40, 80); } // 綠葉
+                break;
+            case 2: // Style 2: 賽博霓虹 (粉紫 + 青)
+                if (index % 2 === 0) h = random(280, 320); // 紫粉
+                else h = random(160, 190); // 青
+                s = 80; b = 100;
+                break;
+            case 3: // Style 3: 銀白層疊
+                h = 220; s = random(0, 30); b = random(70, 100); // 銀白
+                if(random(1)>0.9) { h=50; s=80; b=100; } // 偶爾金光
+                break;
+            case 4: // Style 4: 量子矩陣 (多色或數據綠)
+                h = random(0, 360); s = 80; b = 100; // 彩色粒子
+                break;
+        }
+        
+        p.targetColor = color(h, s, b);
+        p.maxSpeed = 15;
+
+    } else if (currentMode === 'SCATTER') {
+        target = null; 
+        p.targetColor = color(0, 0, 100); // 散開變成純白
+        p.maxSpeed = 20;
+    } else if (currentMode === 'GALLERY' || currentMode === 'PINCH') {
+        if (index % 4 === 0) { 
+            let circleIndex = (index / 4) % circlePoints.length;
+            target = circlePoints[circleIndex];
+            p.targetColor = color(330, 60, 100); // 粉色相框
+            p.maxSpeed = 12;
+        } else {
+            isBackground = true;
+            p.targetColor = color(220, 80, 60, 0.5); 
+        }
+    }
+
+    p.behaviors(target, handX, handY, currentMode, isBackground, isHandDetected);
+    p.update();
+    p.show();
+  });
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  calculateAllTreeStyles();
+  calculateCirclePoints();
+}
+
+function nextPhoto() {
+    galleryIndex = (galleryIndex + 1) % photoUrls.length;
+    imgElement.src = photoUrls[galleryIndex];
+}
+
+// --- 粒子類別 ---
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(random(-1, 1), random(-1, 1));
+    this.acc = createVector();
+    this.maxSpeed = 10;
+    this.maxForce = 0.4;
+    this.currentColor = color(0, 0, 0, 0);
+    this.targetColor = color(255);
+    this.size = random(2, 4);
+    this.angle = random(TWO_PI); 
+    this.orbitRadius = random(width * 0.2, width * 0.8);
+  }
+
+  behaviors(target, hx, hy, mode, isBg, hasHand) {
+    let mouse = createVector(hx, hy);
+    
+    // 自動旋轉效果 (當在樹模式且無手 或 只是想讓樹轉動)
+    // 這裡我們讓樹永遠微微轉動，看起來更有生命力
+    if (mode === 'TREE' && target) {
+         let angle = (!hasHand) ? autoRotateAngle : autoRotateAngle * 0.2; // 有手時轉慢一點
+         let cx = width/2;
+         let cy = height/2;
+         // 繞中心旋轉目標點
+         let tx = target.x - cx;
+         let ty = target.y - cy; // 先不轉 Y，只轉 XZ 平面投影
+         let rotatedX = tx * cos(angle) - (target.y - 250) * 0.2 * sin(angle); // 偽 3D
+         
+         // 簡單版：直接飛向目標，但目標如果是動態的需要在 calculate 更新
+         // 為了效能，我們在這裡做一個簡單的偏移
+         let arrive = this.arrive(createVector(target.x, target.y));
+         
+         // 如果沒手，加一點漩渦力
+         if (!hasHand) {
+             let center = createVector(width/2, height/2);
+             let steer = p5.Vector.sub(center, this.pos);
+             steer.rotate(HALF_PI); // 切線方向
+             steer.setMag(0.5);
+             this.applyForce(steer);
+         }
+         this.applyForce(arrive);
+         return;
+    }
+
+    if (isBg) {
+        let center = createVector(width/2, height/2);
+        this.angle += 0.003; 
+        let desiredX = center.x + cos(this.angle) * this.orbitRadius;
+        let desiredY = center.y + sin(this.angle) * this.orbitRadius * 0.6; 
+        let desiredPos = createVector(desiredX, desiredY);
+        let steer = p5.Vector.sub(desiredPos, this.pos);
+        steer.setMag(3);
+        this.applyForce(steer);
+    } else if (mode === 'SCATTER' && hasHand) {
+        let flee = this.flee(mouse);
+        flee.mult(8); 
+        this.applyForce(flee);
+        this.applyForce(p5.Vector.random2D().mult(0.5));
+    } else if (target) {
+        let arrive = this.arrive(createVector(target.x, target.y));
+        arrive.mult(1.2);
+        this.applyForce(arrive);
+    } else {
+        this.applyForce(p5.Vector.random2D().mult(0.1));
+        this.vel.limit(2);
+    }
+  }
+
+  arrive(target) {
+    let desired = p5.Vector.sub(target, this.pos);
+    let d = desired.mag();
+    let speed = this.maxSpeed;
+    if (d < 100) speed = map(d, 0, 100, 0, this.maxSpeed);
+    desired.setMag(speed);
+    let steer = p5.Vector.sub(desired, this.vel);
+    steer.limit(this.maxForce);
+    return steer;
+  }
+
+  flee(target) {
+    let desired = p5.Vector.sub(target, this.pos);
+    let d = desired.mag();
+    if (d < 250) {
+      desired.setMag(this.maxSpeed);
+      desired.mult(-1);
+      let steer = p5.Vector.sub(desired, this.vel);
+      steer.limit(this.maxForce);
+      return steer;
+    }
+    return createVector(0, 0);
+  }
+
+  applyForce(f) { this.acc.add(f); }
+
+  update() {
+    this.pos.add(this.vel);
+    this.vel.add(this.acc);
+    this.acc.mult(0);
+    this.currentColor = lerpColor(this.currentColor, this.targetColor, 0.08);
+  }
+
+  show() {
+    drawingContext.shadowBlur = this.size * 2; 
+    drawingContext.shadowColor = this.currentColor;
+    stroke(this.currentColor);
+    strokeWeight(this.size);
+    point(this.pos.x, this.pos.y);
+    drawingContext.shadowBlur = 0; 
+  }
+}
+
+// --- 核心：5種樹的數學生成 ---
+function calculateAllTreeStyles() {
+    let treeHeight = height * 0.75;
+    let treeBaseY = height * 0.9;
+    let treeTopY = treeBaseY - treeHeight;
+    let cx = width / 2;
+
+    // Style 0: OK - 冰雪螺旋 (原本的)
+    treeStyles[0] = [];
+    let spirals = 6;
+    let pts = floor(particleCount / spirals);
+    for (let s = 0; s < spirals; s++) {
+        let startAngle = (TWO_PI / spirals) * s;
+        for (let i = 0; i < pts; i++) {
+            let t = i / pts;
+            let angle = startAngle + t * TWO_PI * 3;
+            let radius = map(t, 0, 1, width*0.25, 0);
+            let y = map(t, 0, 1, treeBaseY, treeTopY);
+            let spread = random(-10, 10);
+            treeStyles[0].push({x: cx + (radius+spread)*cos(angle), y: y});
+        }
+    }
+
+    // Style 1: 數字1 - 經典松樹 (隨機填充圓錐)
+    treeStyles[1] = [];
+    for(let i=0; i<particleCount; i++) {
+        let y = random(treeTopY, treeBaseY);
+        let t = map(y, treeTopY, treeBaseY, 0, 1);
+        let maxR = map(t, 0, 1, 0, width*0.28);
+        // 使用 sqrt 讓分佈均勻
+        let r = maxR * sqrt(random(1));
+        let angle = random(TWO_PI);
+        treeStyles[1].push({x: cx + r*cos(angle), y: y});
+    }
+
+    // Style 2: 數字2 - 雙股 DNA (兩條粗螺旋)
+    treeStyles[2] = [];
+    for(let i=0; i<particleCount; i++) {
+        let t = i / particleCount;
+        let y = map(t, 0, 1, treeBaseY, treeTopY);
+        let angle = t * TWO_PI * 6; // 轉比較多圈
